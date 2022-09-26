@@ -1,0 +1,5 @@
+name: Bedwars
+version: '${project.version}'
+main: com.stewart.bedwars.Bedwars
+commands:
+  pw:

@@ -1,0 +1,40 @@
+required-players: 8
+countdown-seconds: 5
+portal-id: 0
+team-size: 1
+game-id: 0
+arenas:
+  0:
+    world: 'world'
+lobby-spawn:
+  world: 'world'
+  x: 1000
+  y: 100
+  z: 0
+  yaw: -70
+  pitch: 0
+team-summoner-items:
+  iron:
+    speed-1: 100
+    speed-2: 80
+    speed-3: 60
+    speed-4: 50
+  gold:
+    speed: 260
+    speed-2: 200
+  diamond:
+    speed: 700
+    speed-2: 500
+bedwars-maps:
+  0:
+    config-name: 'altar-config.yml'
+    name: 'Altar'
+    colour-int: 8
+  1:
+    config-name: 'broch-config.yml'
+    name: 'Broch'
+    colour-int: 11
+  2:
+    config-name: 'crystal-castles-config.yml'
+    name: 'Crystal Castles'
+    colour-int: 6
