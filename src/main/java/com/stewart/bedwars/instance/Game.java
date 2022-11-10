@@ -14,6 +14,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.LeatherArmorMeta;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.potion.PotionEffect;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
@@ -25,6 +26,8 @@ public class Game {
 
     private Bedwars main;
     private Arena arena;
+    private Integer bedBreakSeconds = 2400;  // 2400 = 40 min
+    private Integer gameEndSeconds = 3000;   // 3000 = 50 min
     // keeps a list of all people currently spawn protected and the game time it started
     private HashMap<UUID, Integer> playerSpawnProtect = new HashMap<>();
     // game time passed in seconds
@@ -58,15 +61,20 @@ public class Game {
         for(UUID uuid : arena.getPlayers()) {
             Player player = Bukkit.getPlayer(uuid);
             player.getInventory().clear();
-         //  player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
-        //    player.getInventory().addItem(new ItemStack(Material.EMERALD, 64));
-         //  player.getInventory().addItem(new ItemStack(Material.FIREBALL, 64));
+        //   player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
+         //   player.getInventory().addItem(new ItemStack(Material.EMERALD, 64));
+        //   player.getInventory().addItem(new ItemStack(Material.FIREBALL, 64));
           //  player.getInventory().addItem(new ItemStack(Material.TNT, 64));
          //   player.getInventory().addItem(new ItemStack(Material.WOOL, 64));
           //  player.getInventory().addItem(new ItemStack(Material.IRON_INGOT, 64));
+          //  ItemStack eggs = new ItemStack(Material.EGG, 20);
+          //  ItemMeta eggsMeta  = eggs.getItemMeta();
+        //    eggsMeta.setDisplayName("Golem spawn egg");
+        //    eggs.setItemMeta(eggsMeta);
+        //    player.getInventory().addItem(eggs);
 
             //  player.getInventory().addItem(new ItemStack(332, 20));
-         //   player.getInventory().addItem(new ItemStack(Material.SNOW_BALL, 50));
+          //  player.getInventory().addItem(new ItemStack(Material.SNOW_BALL, 50));
          //   player.getInventory().addItem(new ItemStack(Material.CARPET, 50));
             // the teams are a property of the arena instance.  This class (game) is also a property of the arena instance.
             // To get the team instance from here we have to get it from the arena instance that was passed to this class
@@ -116,6 +124,9 @@ public class Game {
         }
         // stop them taking fall damage if teleported after falling
         died.setFallDistance(0F);
+        for (PotionEffect effect : died.getActivePotionEffects()) {
+            died.removePotionEffect(effect.getType());
+        }
 
         // where the killed player is spawned depends on the game state and if they have a bed or not
         if (arena.getState() == GameState.RECRUITING || arena.getState() == GameState.COUNTDOWN) {
@@ -141,7 +152,7 @@ public class Game {
                     // if so spawn them back at their base
                     // first spawn them as a spectator for 5 seconds
                     died.setGameMode(GameMode.SPECTATOR);
-                    System.out.println("Player died, making spectator & teleporting to spactator");
+                    System.out.println("Player died, making spectator & teleporting to spectator");
                     died.teleport(arena.getSpectatorSpawn());
                     // add them to the playerSpectatorForRespawn list, this is checked every second to see if it is
                     // time spawn them back at their base
@@ -180,6 +191,8 @@ public class Game {
         this.gameTime =  String.format("%02d:%02d",  (gameSeconds % 3600) / 60, gameSeconds % 60);
 
         if (playerSpawnProtect.size() > 0) {
+            // remove any players from spawn protect list that may have left the game
+            playerSpawnProtect.entrySet().removeIf(e->  Bukkit.getPlayer(e.getKey()) == null );
             // show particles around spawn protected players
             particleIterator = 19;
             particleTask = null;
@@ -188,59 +201,79 @@ public class Game {
 
         // BEDS DESTROYED
 
-        if (gameSeconds == 2280) {  // 38 mins will be 2280 seconds
+        if (gameSeconds == (bedBreakSeconds - 120)) {  // 2 mins before bed break
             // countdown 2 mins till all beds broken
-            arena.sendSubTitle("2 minutes until all beds broken!");
+            arena.sendTitleSubtitle("2 minutes","until all beds broken!", null, "4");
+            arena.sendMessage(ChatColor.RED + "2 minutes until all beds broken!");
         }
 
-        if (gameSeconds == 2340) {  // 39 mins will be 2340 seconds
+        if (gameSeconds == (bedBreakSeconds - 60 )) {  // 1 min before bed break
             // countdown 1 mins till all beds broken
-            arena.sendSubTitle("1 minute until all beds broken!");
+            arena.sendTitleSubtitle("1 minute","until all beds broken!", null, "4");
         }
 
-        if (gameSeconds >= 2395 && gameSeconds < 4000) {  //  >=2395 <2400 for last 5 seconds before 40 min
+        // last 30 seconds every 10 seconds
+        if (gameSeconds == (bedBreakSeconds - 30) || gameSeconds == (bedBreakSeconds - 20) || gameSeconds == (bedBreakSeconds - 10)) {
+            int seconds = bedBreakSeconds - gameSeconds; //
+            arena.sendMessage(ChatColor.GOLD + "" + seconds + " seconds until all beds broken!");
+            arena.sendTitleSubtitle(seconds + " seconds","until all beds broken", null, "4");
+        }
+
+        if (gameSeconds >= (bedBreakSeconds - 5) && gameSeconds < bedBreakSeconds) {  // last 5 secs before bed break time
             // countdown last 5 seconds till bed broken
-            int seconds = 4000 - gameSeconds; //
+            int seconds = bedBreakSeconds - gameSeconds; //
             if (seconds > 1) {
-                arena.sendMessage(ChatColor.GREEN + "" + seconds + " seconds until all beds broken!");
+                arena.sendMessage(ChatColor.GOLD + "" + seconds + " seconds until all beds broken!");
             } else {
-                arena.sendMessage(ChatColor.GREEN + "1 second until all beds broken!");
+                arena.sendMessage(ChatColor.GOLD + "1 second until all beds broken!");
             }
+            arena.sendTitleSubtitle(String.valueOf(seconds),"", null, String.valueOf(seconds));
         }
 
-        if (gameSeconds == 2400) {  //  2400 for 40 min
+        if (gameSeconds == bedBreakSeconds) {  //  bed break time
             // show red tile & break all beds.
-            arena.sendRedTitle("All beds broken!");
+            arena.sendTitleSubtitle("All beds broken!", "", null, null);
             arena.breakAllBeds();
+            arena.sendMessage(ChatColor.RED + "All beds broken!");
         }
 
         // GAME END TIME
 
-        if (gameSeconds == 2880) {  // 48 mins will be 2880 seconds
+        if (gameSeconds == (gameEndSeconds - 120)) {  // 2 mins before game ends
             // countdown 2 mins till game ends
-
-            arena.sendSubTitle("2 minutes until all game ends!");
+            arena.sendTitleSubtitle("2 minutes","until game ends!", null, "4");
+            arena.sendMessage(ChatColor.RED + "2 minutes until game ends!");
         }
 
-        if (gameSeconds == 2940) {  // 49 mins will be 2940 seconds
+        if (gameSeconds == (gameEndSeconds - 60)) {  // 1 min before game ends
             // countdown 1 mins till game ends
-            arena.sendSubTitle("1 minute until game ends!");
+            arena.sendTitleSubtitle("1 minute", "until game ends!", null, "4");
+            arena.sendMessage(ChatColor.RED + "1 minute until game ends!");
         }
 
-        if (gameSeconds >= 2955 && gameSeconds < 3000) {  //  >=2955 <3000 for last 5 seconds before 50 min
+        // last 30 seconds every 10 seconds
+        if (gameSeconds == (gameEndSeconds - 30) || gameSeconds == (gameEndSeconds - 20) || gameSeconds == (gameEndSeconds - 10)) {
+            int seconds = gameEndSeconds - gameSeconds; //
+            arena.sendMessage(ChatColor.GOLD + "" + seconds + " seconds until game ends!");
+            arena.sendTitleSubtitle(seconds + " seconds","until game ends!", null, "4");
+        }
+
+        if (gameSeconds >= (gameEndSeconds - 5) && gameSeconds < gameEndSeconds) {  //  last 5 game seconds
             // countdown last 5 seconds till game ends
-            int seconds = 3000 - gameSeconds; //
+            int seconds = gameEndSeconds - gameSeconds; //
             if (seconds > 1) {
-                arena.sendMessage(ChatColor.GREEN + "" + seconds + " seconds until game ends!");
+                arena.sendMessage(ChatColor.GOLD + "" + seconds + " seconds until game ends!");
             } else {
-                arena.sendMessage(ChatColor.GREEN + "1 second until all game ends!");
+                arena.sendMessage(ChatColor.GOLD + "1 second until game ends!");
             }
+            arena.sendTitleSubtitle(String.valueOf(seconds), "", null, null);
         }
 
-        if (gameSeconds == 3000) {  //  3000 for 50 min
+        if (gameSeconds == gameEndSeconds) {  //  game end time
             // show red tile & put game to finishing phase.
             if (arena.getState() == GameState.LIVE) { // not if it is finishing already due to a win
-                arena.sendRedTitle("It's a draw!");
+                arena.sendTitleSubtitle("It's a draw!", "", "6", null);
+                arena.sendMessage(ChatColor.RED + "It's a draw!");
                 arena.gameDraw();
             }
         }
@@ -287,6 +320,7 @@ public class Game {
             particleTask = Bukkit.getScheduler().runTaskTimer(main, () -> {
                 if (particleIterator != 0) {
 
+                    if (player != null) {
                         Location location = player.getLocation();
 
                         PacketPlayOutWorldParticles packet = new PacketPlayOutWorldParticles(EnumParticle.DRIP_LAVA,
@@ -295,7 +329,12 @@ public class Game {
                         for (Player online : Bukkit.getOnlinePlayers()) {
                             ((CraftPlayer) online).getHandle().playerConnection.sendPacket(packet);
                         }
-                    particleIterator--;
+                        particleIterator--;
+                    } else {
+                        System.out.println("player is null, cancelling particles");
+                        particleIterator = 0;
+                        particleTask.cancel();
+                    }
                 } else {
                     // If "i" is zero, we cancel the task.
                     particleTask.cancel();

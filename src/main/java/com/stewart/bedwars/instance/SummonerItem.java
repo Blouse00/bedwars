@@ -86,7 +86,13 @@ public class SummonerItem  {
 
 
             // for mid summoners (has armour stand), it can start on its first tick.
-            if ((currentGameSeconds > (previousDropSeconds + itemSpeedSeconds)) || (previousDropSeconds == 0 && hasArmourStand)) {
+            if ((currentGameSeconds >= (previousDropSeconds + itemSpeedSeconds)) || (previousDropSeconds == 0 && hasArmourStand)) {
+
+               // String matType = material.toString();
+              //  if (!hasArmourStand) {
+              //      System.out.println("Summoner: " + matType + ", previousDropSeconds: = " + previousDropSeconds +
+              //              ", itemSpeedSeconds " + itemSpeedSeconds + ", currentGameSeconds: " + currentGameSeconds);
+               // }
 
                 // get the numer of this items already spawned within 4 blocks of the summoner
                 int numItems = getNumItems(material);
@@ -97,11 +103,7 @@ public class SummonerItem  {
                         material.equals(Material.DIAMOND) && numItems < 13 ||
                         material.equals(Material.EMERALD) && numItems < 5 ) {
 
-
-
-
                     previousDropSeconds = currentGameSeconds;
-
 
                     World thisWorld = location.getWorld();
                     Item ingot = thisWorld.dropItem(location, new ItemStack(material));
@@ -116,7 +118,7 @@ public class SummonerItem  {
                         ((CraftPlayer) online).getHandle().playerConnection.sendPacket(packet);
                     }
                 } else {
-                    System.out.println("too many " + material.toString() + " currently " + numItems + " not spawning any more");
+                    System.out.println("summoner id: " + id + ", too many " + material.toString() + " currently " + numItems + " not spawning any more");
                 }
 
             }

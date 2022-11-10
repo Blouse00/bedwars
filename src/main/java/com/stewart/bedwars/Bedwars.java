@@ -1,6 +1,11 @@
 package com.stewart.bedwars;
 
+import com.gmail.tracebachi.SockExchange.Messages.ReceivedMessage;
+import com.gmail.tracebachi.SockExchange.Messages.ReceivedMessageNotifier;
+import com.gmail.tracebachi.SockExchange.Spigot.SockExchangeApi;
+import com.google.common.io.ByteArrayDataInput;
 import com.stewart.bedwars.command.ArenaCommand;
+import com.stewart.bedwars.instance.Arena;
 import com.stewart.bedwars.listeners.ConnectListener;
 import com.stewart.bedwars.listeners.GameListener;
 import com.stewart.bedwars.manager.ArenaManager;
@@ -9,9 +14,13 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.function.Consumer;
+
 public final class Bedwars extends JavaPlugin {
 
     private ArenaManager arenaManager;
+    private SockExchangeApi sockExchangeApi;
+    private ReceivedMessageNotifier messageNotifier;
 
     @Override
     public void onEnable() {
@@ -45,10 +54,51 @@ public final class Bedwars extends JavaPlugin {
                 arenaManager.getFirstArena().updateLobby();
             }
         }, 60L);
+
+        // this is used to receive sock exchange messages from the lobby
+        sockExchangeApi = SockExchangeApi.instance();
+
+        // Get the request notifier which will run a provided Consumer when
+        // there is a new message on a specific channel
+        messageNotifier = sockExchangeApi.getMessageNotifier();
+
+        Consumer<ReceivedMessage> requestConsumer = rm -> {
+            System.out.println("Message received");
+            try {
+                ByteArrayDataInput in = rm.getDataInput();
+                String s = in.readLine();
+                if (s != null) {
+                    System.out.println("SockExchange message received " + s);
+                    // s will be the message
+                    String[] arrReceived = s.split("\\.");
+                    if (arrReceived[1].equals("request-status")) {
+                        Arena arena = arenaManager.getFirstArena();
+                        arena.updateLobby();
+                    }
+
+                } else {
+                    System.out.println("Received message is null");
+                }
+
+                // Pass the message to the Game class which handles keeping track of server statuses
+
+                // if the message
+
+            } catch (Exception ex) {
+                System.out.println("Sock exchange received message error");
+                ex.printStackTrace();
+            }
+        };
+
+        // this registers the listener for messages from other servers
+        messageNotifier.register("LobbyChannel", requestConsumer);
     }
 
     // returns the arena manager class instance
     public ArenaManager getArenaManager() {return arenaManager;}
+
+    // returns the arena manager class instance
+    public SockExchangeApi getSockExchangeApi() {return sockExchangeApi;}
 
     @Override
     public void onDisable() {

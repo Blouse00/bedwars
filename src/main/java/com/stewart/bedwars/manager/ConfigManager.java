@@ -20,6 +20,7 @@ public class ConfigManager {
 
     /* public functions can be called from other classes */
     public  static int getRequiredPlayers() { return config.getInt("required-players");}
+    public  static int getMaxPlayers() { return config.getInt("max-players");}
     public  static int getCountdownSeconds() { return config.getInt("countdown-seconds");}
     public  static int getTeamSize() { return config.getInt("team-size");}
     public  static Location getLobbySpawn() {

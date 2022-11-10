@@ -758,7 +758,11 @@ public class ShopEntities {
                 // Buy stone sword
                 if (playerItemInventory.hasAmount(pricesConfig, "weapons.stone-sword", true)) {
                    // playerItemInventory.removeIron(5);
-                    player.getInventory().addItem(new ItemStack(Material.STONE_SWORD, 1));
+                    ItemStack itemStack = new ItemStack(Material.STONE_SWORD, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "stone sword" + ChatColor.GREEN + " for " + getPrice("weapons.stone-sword", true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.stone-sword", false) + " to buy this item.");
@@ -768,7 +772,11 @@ public class ShopEntities {
                 // Buy iron sword
                 if (playerItemInventory.hasAmount(pricesConfig, "weapons.iron-sword", true)) {
                     //playerItemInventory.removeGold(10);
-                    player.getInventory().addItem(new ItemStack(Material.IRON_SWORD, 1));
+                    ItemStack itemStack = new ItemStack(Material.IRON_SWORD, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought an " + ChatColor.BLUE + "iron sword" + ChatColor.GREEN + " for " + getPrice("weapons.iron-sword", true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.iron-sword", false) +" to buy this item.");
@@ -778,7 +786,11 @@ public class ShopEntities {
                 // Buy diamond sword
                 if (playerItemInventory.hasAmount(pricesConfig, "weapons.diamond-sword", true)) {
                     //playerItemInventory.removeEmerald(5);
-                    player.getInventory().addItem(new ItemStack(Material.DIAMOND_SWORD, 1));
+                    ItemStack itemStack = new ItemStack(Material.DIAMOND_SWORD, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "diamond sword" + ChatColor.GREEN + " for " + getPrice("weapons.diamond-sword", true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.diamond-sword", false) + " to buy this item.");
@@ -788,7 +800,11 @@ public class ShopEntities {
                 // Buy bow
                 if (playerItemInventory.hasAmount(pricesConfig, "weapons.bow", true)) {
                     //playerItemInventory.removeDiamond(5);
-                    player.getInventory().addItem(new ItemStack(Material.BOW, 1));
+                    ItemStack itemStack = new ItemStack(Material.BOW, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "bow" + ChatColor.GREEN + " for " + getPrice("weapons.bow", true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.bow", false) + " to buy this item.");
@@ -888,7 +904,11 @@ public class ShopEntities {
                 configItem = "tools.stone-pick";
                 if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                    // playerItemInventory.removeIron(15);
-                    player.getInventory().addItem(new ItemStack(Material.STONE_PICKAXE, 1));
+                    ItemStack itemStack = new ItemStack(Material.STONE_PICKAXE, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "stone pickaxe" + ChatColor.GREEN + " for " + getPrice(configItem, true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
@@ -899,7 +919,11 @@ public class ShopEntities {
                 configItem = "tools.iron-pick";
                 if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                   //  playerItemInventory.removeGold(15);
-                    player.getInventory().addItem(new ItemStack(Material.IRON_PICKAXE, 1));
+                    ItemStack itemStack = new ItemStack(Material.IRON_PICKAXE, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought an " + ChatColor.BLUE + "iron pickaxe" + ChatColor.GREEN + " for " + getPrice(configItem, true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
@@ -910,7 +934,11 @@ public class ShopEntities {
                 configItem = "tools.diamond-pick";
                 if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                    // playerItemInventory.removeEmerald(3);
-                    player.getInventory().addItem(new ItemStack(Material.DIAMOND_PICKAXE, 1));
+                    ItemStack itemStack = new ItemStack(Material.DIAMOND_PICKAXE, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "diamond pickaaxe" + ChatColor.GREEN + " for " + getPrice(configItem, true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
@@ -921,7 +949,11 @@ public class ShopEntities {
                 configItem = "tools.stone-axe";
                 if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                    // playerItemInventory.removeIron(15);
-                    player.getInventory().addItem(new ItemStack(Material.STONE_AXE, 1));
+                    ItemStack itemStack = new ItemStack(Material.STONE_AXE, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "stone axe" + ChatColor.GREEN + " for " + getPrice(configItem, true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
@@ -932,7 +964,11 @@ public class ShopEntities {
                 configItem = "tools.iron-axe";
                 if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                   //  playerItemInventory.removeGold(15);
-                    player.getInventory().addItem(new ItemStack(Material.IRON_AXE, 1));
+                    ItemStack itemStack = new ItemStack(Material.IRON_AXE, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought an " + ChatColor.BLUE + "iron axe" + ChatColor.GREEN + " for " + getPrice(configItem, true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
@@ -943,7 +979,11 @@ public class ShopEntities {
                 configItem = "tools.diamond-axe";
                 if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                    // playerItemInventory.removeDiamond(15);
-                    player.getInventory().addItem(new ItemStack(Material.DIAMOND_AXE, 1));
+                    ItemStack itemStack = new ItemStack(Material.DIAMOND_AXE, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "diamond axe" + ChatColor.GREEN + " for " + getPrice(configItem, true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
@@ -954,7 +994,11 @@ public class ShopEntities {
                 configItem = "tools.shears";
                 if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                    // playerItemInventory.removeIron(15);
-                    player.getInventory().addItem(new ItemStack(Material.SHEARS, 1));
+                    ItemStack itemStack = new ItemStack(Material.SHEARS, 1);
+                    ItemMeta itemMeta = itemStack.getItemMeta();
+                    itemMeta.spigot().setUnbreakable(true);
+                    itemStack.setItemMeta(itemMeta);
+                    player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought " + ChatColor.BLUE + "shears" + ChatColor.GREEN + " for " + getPrice(configItem, true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, true) + " to buy this item.");
@@ -1084,7 +1128,7 @@ public class ShopEntities {
                     carpetStack.setItemMeta(carpetMeta);
                     player.getInventory().addItem(carpetStack);
                     //
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought " + amount  + ChatColor.BLUE + " blocks of wool" + ChatColor.GREEN + " for " + getPrice(configItem, true));
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought " + amount  + ChatColor.BLUE + " magic carpet" + ChatColor.GREEN + " for " + getPrice(configItem, true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
                 }

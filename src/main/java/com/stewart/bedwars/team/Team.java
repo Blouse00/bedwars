@@ -541,6 +541,8 @@ public class Team {
         this.hasBed = false;
     }
 
+    public String getColourPrefix() { return this.colourPrefix;}
+
     public void spawnTeamGolem(Location location, String playerName) {
         final CraftIronGolem craftGolem = (CraftIronGolem) Bukkit.getWorld("world").spawnEntity(location, EntityType.IRON_GOLEM);
         final EntityIronGolem golem = craftGolem.getHandle();

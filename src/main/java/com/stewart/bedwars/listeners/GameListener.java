@@ -515,7 +515,7 @@ public class GameListener implements Listener {
                 if ((player.getInventory().getItemInHand().getType() == Material.EGG)) {
                     System.out.println("monster egg used");
                     if (makeGolem(player)) {
-                        GameUtils.reduceInHandByOne(player);
+                      //  GameUtils.reduceInHandByOne(player);
                     }
                 }
             }
@@ -905,12 +905,18 @@ public class GameListener implements Listener {
             System.out.println("Slot " + slot + " clicked");
             if (slot == 8) {
                 // player leave the game (compass)
-                player.sendTitle("","");
+                player.sendTitle("", "");
                 ByteArrayDataOutput out = ByteStreams.newDataOutput();
                 out.writeUTF("Connect");
                 out.writeUTF("Lobby");
                 player.sendPluginMessage(main, "BungeeCord", out.toByteArray());
-            } else {
+            } else if (slot == 7) { // op start the game
+                Arena arena = main.getArenaManager().getArena(player);
+                arena.start();
+            } else if (slot == 6) { // op simulate player join for queue test
+                Arena arena = main.getArenaManager().getArena(player);
+                arena.simulatePlayerJoinForQueue(player);
+             } else {
 
                 FileConfiguration config = main.getConfig();
                 String path = "bedwars-maps." + slot + ".name";
