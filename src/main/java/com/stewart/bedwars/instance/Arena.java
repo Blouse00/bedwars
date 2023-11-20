@@ -10,8 +10,7 @@ import com.stewart.bedwars.manager.ShopManager;
 import com.stewart.bedwars.team.Team;
 import com.stewart.bedwars.utils.BorderCheck;
 import com.stewart.bedwars.utils.ChatUtils;
-import com.stewart.bedwars.utils.GameUtils;
-import com.sun.tools.javac.code.Attribute;
+import com.stewart.bedwars.utils.PartyTeamSort;
 import net.minecraft.server.v1_8_R3.*;
 import org.bukkit.*;
 import org.bukkit.Material;
@@ -28,14 +27,11 @@ import org.bukkit.entity.Item;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
 import java.io.File;
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -47,10 +43,13 @@ public class Arena {
     private Location spawn;
     private Location spectatorSpawn;
     private FileConfiguration config;
+    private int teamSize;
 
     private GameState state;
     private List<UUID> players;
+    private List<UUID> outOfGamePlayers;
     private Countdown countdown;
+    private PlayersRequiredRunnable playersRequiredRunnable;
     private GameClock gameClock;
     private List<Team> teams = new ArrayList<>();
     private HashMap<UUID, UUID> playerDamage = new HashMap<>();
@@ -62,10 +61,7 @@ public class Arena {
     private int maxPlayers;
     private World world;
     private List<Block> playerBlocks = new ArrayList<>();
-
     private BorderCheck borderCheck;
-
-
     private int floorY;
 
     // Most of the game code is split between this class and the 'Game' class.  I could have
@@ -73,17 +69,18 @@ public class Arena {
     // this is created once when the server starts not at the beginning of each game.
     public Arena(Bedwars main, String worldName, String ID) {
 
-
         // this arenas ID, will only be one for this game but may be more in others.
         this.ID = Integer.parseInt(ID);
         // the world name, I'm not using multiple arenas at the moment but having this will help when if I do.
         this.worldName = worldName;
-
+        // set team size to 0, will be updated when the first player joins
+        this.teamSize = 0;
         // when the arena is created gamestate will be recruiting
         this.state = GameState.RECRUITING;
         // will hold all the players currently on the server, there is a separate player list
         // included in each team instance
         this.players = new ArrayList<>();
+        this.outOfGamePlayers = new ArrayList<>();
         // the countdown for the lobby
         this.countdown = new Countdown(main, this);
         // the game class holds game related stuff, just the player killed and spawn protection stuff
@@ -94,9 +91,6 @@ public class Arena {
         // read the gameID and server ID from config, this is used for updating the hub server (sign) with information
         // about the servers game state & number of players.
         this.config = main.getConfig();
-      //  this.gameID = config.getInt("game-id");
-       // this.serverID = config.getInt("portal-id");
-        this.maxPlayers = config.getInt("max-players");
         // the spawn location for players entering the lobby
         world = new WorldCreator(worldName).createWorld();
         spawn = new Location(
@@ -108,35 +102,29 @@ public class Arena {
                 (float) config.getDouble("lobby-spawn.pitch"));
     }
 
-   /* private void fillMaps() {
-        FileConfiguration config = main.getConfig();
-        for (String str : config.getConfigurationSection("bedwars-maps").getKeys(false)) {
-            mapVotes.put(Integer.parseInt(str), 0);
-        }
-    } */
-
-    public void mapVote(Player player, Integer mapID) {
+    public void mapVote(Player player, Integer slotInt) {
         // check if the map id exists
-        if (config.contains("bedwars-maps." + mapID + ".name")) {
-            mapVotes.put(player.getUniqueId(), mapID);
-            String m = config.getString("bedwars-maps." + mapID + ".name");
-            player.sendMessage("You voted for the " + m + " map!");
-        } else {
-            System.out.println("map vote map not found");
+        String mapPath = "solo-maps";
+        if (teamSize == 2) mapPath = "duo-maps";
+        if (teamSize == 4) mapPath = "quad-maps";
+        for (String str : config.getConfigurationSection(mapPath).getKeys(false)) {
+            if (slotInt == config.getInt( mapPath + "." + str + ".slot")) {
+                mapVotes.put(player.getUniqueId(), Integer.valueOf(str));
+                String m = config.getString(mapPath + "." + str + ".name");
+                player.sendMessage("You voted for the " + m + " map!");
+            }
         }
-        for (Map.Entry<UUID, Integer> entry : mapVotes.entrySet()) {
-            UUID key = entry.getKey();
-            Integer value = entry.getValue();
-            System.out.println("UUID " + key.toString() + " id " + value);
-        }
-
+        player.closeInventory();
     }
+
+
+
 
     // fired to start the game, either when countdown completes or the command is entered.
     public void start() {
         System.out.println("Game starting");
         // clears up any dropped items left in the map
-        removeEntityItems();
+       // removeEntityItems();
         // this will be decided by voting at this point eventually
         String configName = getArenaConfigName();
         File file = new File(main.getDataFolder(), configName);
@@ -144,11 +132,15 @@ public class Arena {
         setWorldTeamsSummoners(mapConfig);
         // add players to teams
         addPlayersToTeams();
-        // get rid of any empty teams
-      //  removeEmptyTeams();
+        // get rid of any empty teams (need to keep them for their summoners)
+        //  removeEmptyTeams();
         // teleports each teams players to their spawn point
         for (Team team : teams) {
             team.teleportPlayersToSpawn();
+        }
+        if (playersRequiredRunnable != null) {
+            playersRequiredRunnable.cancel();
+            playersRequiredRunnable = null;
         }
 
         // spawn the villagers etc.  Probably had a good reason for doing it 1/2 second after the game starts
@@ -164,7 +156,7 @@ public class Arena {
         // clear the player block list * not needed now I do a server restart but cant hurt.
         playerBlocks = new ArrayList<>();
         // stop the countdown, if it had stopped naturally it would have been stopped anyway but if
-        // game was started by command it will still be running & recall arena.start when it completes
+        // game was started by command it will still be running & re-call arena.start when it completes
         if (countdown.isRunning()) {
             System.out.println("countdown was running, cancelling it");
             countdown.cancel();
@@ -172,21 +164,38 @@ public class Arena {
         // start the clock
         // the game clock will be started when the game starts and tick once per second
         // it is used to start & upgrade the diamond & emerald summoners at the right time
-        // and will show the game clock in the ui.
+        // and will show the game clock in the ui. (& lots of other stuff too)
         this.gameClock = new GameClock(main, this);
         gameClock.start();
         // starts the game class, (sets the game start to live)
         game.start();
-        // scoreboards are mostly handled per team.  They not working fully at this point but this is
-        // where they are added (in the team class)
+        // scoreboards are mostly handled per team.
         for (Team team : teams) {
             team.setScoreboard();
         }
         sendTitleSubtitle("Fight!", "", null, null);
         // update the sign in the hub server
         updateLobby();
+    }
 
+    //also called from game
+    public void addHotbarNetherStar(Player player) {
+        // this will open the game inventory menu - which will hold the exit game option.
+        ItemStack star = new ItemStack(Material.NETHER_STAR);
+        ItemMeta ism = star.getItemMeta();
+        ism.setDisplayName(ChatColor.RED + "Open game menu");
+        star.setItemMeta(ism);
+        player.getInventory().setItem(8, star);
+    }
 
+    //also called from game
+    public void addWoodenSword(Player player) {
+        ItemStack itemStack = new ItemStack(Material.WOOD_SWORD);
+        ItemMeta itemMeta = itemStack.getItemMeta();
+        itemMeta.spigot().setUnbreakable(true);
+        itemStack.setItemMeta(itemMeta);
+
+        player.getInventory().addItem(itemStack);
     }
 
     private String getArenaConfigName() {
@@ -225,9 +234,13 @@ public class Arena {
 
             int mapID = count > maxCount ? a[a.length-1] : popular;
 
+            String mapPath = "solo-maps";
+            if (teamSize == 2) mapPath = "duo-maps";
+            if (teamSize == 4) mapPath = "quad-maps";
+
             // if mapID exists in the config use it
-            if (config.contains("bedwars-maps." + mapID + ".name")) {
-                return config.getString("bedwars-maps." + mapID + ".config-name");
+            if (config.contains(mapPath + "." + mapID + ".name")) {
+                return config.getString(mapPath + "." + mapID + ".config-name");
             } else {
                 System.out.println("Most popular map not found mapID " + mapID);
                 // random map
@@ -238,10 +251,12 @@ public class Arena {
 
     private String getRandomMap() {
         System.out.println("Picking a random map");
+        String mapPath = "solo-maps";
+        if (teamSize == 2) mapPath = "duo-maps";
+        if (teamSize == 4) mapPath = "quad-maps";
         ArrayList<String> arr = new ArrayList<>();
-        for (String str : config.getConfigurationSection("bedwars-maps").getKeys(false)) {
-            arr.add(config.getString("bedwars-maps." + str + ".config-name"));
-            System.out.println("hey");
+        for (String str : config.getConfigurationSection(mapPath).getKeys(false)) {
+            arr.add(config.getString(mapPath + "." + str + ".config-name"));
         }
         String picked = arr.get(new Random().nextInt(arr.size()));
         System.out.println("Picked =  " + picked);
@@ -304,21 +319,6 @@ public class Arena {
         shopManager.spawnAll();
     }
 
-    // remove all item entities left in the map. (titties heh)
-    // not really required now that we do server restart but cant hurt.
-    private void removeEntityItems() {
-        List<Entity> entList = Bukkit.getWorld(worldName).getEntities();
-        for(Entity current : entList){
-            if (current instanceof Item || current instanceof Silverfish || current instanceof IronGolem){
-                Item item = (Item) current;
-                current.remove();
-            }
-        }
-        if (shopManager != null) {
-            shopManager.removeAll();
-        }
-    }
-
     // the GameClock class will fire this on every tick.
     // it's to be used for starting / upgrading the diamond and emerald summoners
     // the ui clock will be handled in the gameClock class
@@ -342,6 +342,12 @@ public class Arena {
 
         // fires the clock tick function in the game class so it can do stuff too.
         game.clockTick();
+        // update time on scoreboard for out of game players
+        String gt = getGame().getGameTime();
+        for (UUID uuid :outOfGamePlayers) {
+            Player player = Bukkit.getPlayer(uuid);
+            player.getScoreboard().getTeam("sbTime").setSuffix(ChatColor.BLUE + gt);
+        }
     }
 
     private void  updateCompass(Player player) {
@@ -357,11 +363,18 @@ public class Arena {
 
     // check if the player is outside the arena boundary
     public void checkPlayerWithinArena(Player player) {
-        if (borderCheck.contains(player.getLocation(), true) == false) {
-            // teleport the player back to spawn.
-            Team team = getTeam(player.getUniqueId());
-            team.teleportPlayerToSpawn(player);
-            player.sendMessage("Please stay within the game boundaries!");
+        if (player != null) {
+            if (borderCheck.contains(player.getLocation(), true) == false) {
+                // teleport the player back to spawn.
+                Team team = getTeam(player.getUniqueId());
+                if (team != null) {
+                    team.teleportPlayerToSpawn(player);
+                    player.sendMessage("Please stay within the game boundaries!");
+                } else {
+                    player.teleport(spectatorSpawn);
+                }
+
+            }
         }
     }
 
@@ -375,12 +388,14 @@ public class Arena {
                 continue;
             if(entity == player) continue; //Added this check so you don't target yourself.
             Player p = (Player) entity;
-            if(team.equals(getTeam(p.getUniqueId()))) continue; // on same team
-            double distanceto = player.getLocation().distance(entity.getLocation());
-            if (distanceto > distance)
-                continue;
-            distance = distanceto;
-            target = (Player) entity;
+            if (IsPlayerOutOfGame(p.getUniqueId()) == false) { // target must not be out of the game
+                if (team.equals(getTeam(p.getUniqueId()))) continue; // on same team
+                double distanceto = player.getLocation().distance(entity.getLocation());
+                if (distanceto > distance)
+                    continue;
+                distance = distanceto;
+                target = (Player) entity;
+            }
         }
         return target;
     }
@@ -426,18 +441,21 @@ public class Arena {
             countdown.cancel();
             countdown = new Countdown(main, this);
             state = GameState.RECRUITING;
+            // if no players reset server game mode
+            if (players.size() == 0) {
+                teamSize = 0;
+            }
             System.out.println("update lobby on arena reset");
             updateLobby();
         }
     }
 
     // this fires just as the game starts putting each player in a team
-    // after doing this the function to remove empty teams should be called.
+    // taking into account team size and any parties
     private void addPlayersToTeams() {
-        // the number of players per team in this server
-        int teamSize = ConfigManager.getTeamSize();
-        // shuffle the list
+        // shuffle the list of teams so they are random each game
         Collections.shuffle(teams);
+
         // put black at the end
         for (int i=0; i<teams.size(); i++){
             Team item = teams.get(i);
@@ -448,12 +466,14 @@ public class Arena {
                 teams.add(item);
             }
         }
-        // Let's see how many teams we need
-       // num teams = num players/team size round up
-        int numTeamsRequired = (int) Math.ceil((double)players.size() / teamSize);
+
+        // do the party stuff
+        PartyTeamSort partyTeamSort = new PartyTeamSort(players, teamSize);
+        partyTeamSort.FillTeams();
+
         // remove teams that we don't need by removing the last team from the list
         // until numTeamsToRemove = 0
-        int numTeamsToRemove = teams.size() - numTeamsRequired;
+        int numTeamsToRemove = teams.size() - partyTeamSort.lstTeams.size();
         if (numTeamsToRemove > 0) {
             while (numTeamsToRemove > 0) {
                 int s = teams.size() - 1;
@@ -463,25 +483,16 @@ public class Arena {
             }
         }
 
-        for (UUID uuid : players) {
-            // need to check the player is not already in a team
-            boolean inTeam = false;
-            for (Team team : teams) {
-                if (team.playerInTeam(uuid)) {
-                    inTeam = true;
-                    break;
-                }
+        // Party team sort will have a list of teams that need to be set as the
+        // arena teams.
+        int i = 0; // this will be the team iterator
+        for (PartyTeamSort.PAFParty sortedTeam : partyTeamSort.lstTeams ) {
+            // add the players from the sorted team to this team
+            for (UUID uuid : sortedTeam.partyPlayers) {
+                teams.get(i).addPlayer(uuid);
+                Bukkit.getPlayer(uuid).sendMessage("You are in the " + teams.get(i).getTeamName() + " team");
             }
-
-            if (inTeam == false) {
-                // they are not already in a team, sort the teams so one with lowest number
-                // of players is first.
-                // if it's the
-                teams.sort(Comparator.comparing(Team::getNumPlayers));
-                // add the player to the first (emptiest) team.
-                teams.get(0).addPlayer(uuid);
-                Bukkit.getPlayer(uuid).sendMessage("You are in the " + teams.get(0).getTeamName() + " team");
-            }
+            i += 1; // increment the team iterator
         }
     }
 
@@ -500,9 +511,16 @@ public class Arena {
     // players will be added just as the game starts and empty teams removed again.
     private void setTeams(FileConfiguration mapConfig) {
        // FileConfiguration config = main.getConfig();
+        // for duo & quads maps we will double the amount of items dropped by the team summoner(s)
+        boolean doubleSummonerSpeed = true;
+        if (teamSize == 1) {
+            doubleSummonerSpeed = false;
+        }
         for (String str : mapConfig.getConfigurationSection("teams").getKeys(false)) {
             // look at the team class to see how teams are made.
-            teams.add(new Team(main, this, Integer.parseInt(str), worldName, mapConfig));
+            Team team = new Team(main, this, Integer.parseInt(str), worldName, mapConfig);
+            team.setDoubleSummonerItems(doubleSummonerSpeed);
+            teams.add(team);
         }
     }
 
@@ -519,7 +537,7 @@ public class Arena {
         // show the fireworks
         winningTeam.showWinFireWorks();
         // chat message etc
-        sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GOLD + winningTeam.getTeamName() + " team Wins!");
+        sendMessage(ChatColor.GOLD + winningTeam.getTeamName() + " team Wins!");
         sendTitleSubtitle("" + winningTeam.getTeamChatColor() + winningTeam.getTeamName() + " wins!", "",
                 "6", null);
         winningTeam.sendMessage( ChatColor.GOLD + "Your team won!");
@@ -554,16 +572,9 @@ public class Arena {
    // send all players in the arena a message
     public void sendMessage(String message) {
         for (UUID uuid : players) {
-            Bukkit.getPlayer(uuid).sendMessage(ChatUtils.arenaChatPrefix + ChatColor.WHITE + message);
+            Bukkit.getPlayer(uuid).sendMessage(ChatUtils.arenaChatPrefix +  message);
         }
     }
-
-  /*  // send all players in the arena a title
-    public void sendTitle(String title, String subtitle) {
-        for (UUID uuid : players) {
-            Bukkit.getPlayer(uuid).sendTitle(title, subtitle);
-      }
-    } */
 
     // Called from the connect listener when a player joins the server
     public  void addPlayer(Player player) {
@@ -571,6 +582,14 @@ public class Arena {
         for (PotionEffect effect : player.getActivePotionEffects()) {
             player.removePotionEffect(effect.getType());
         }
+        // give them netherStar to open map vote inventory
+        ItemStack netherStar = new ItemStack(Material.NETHER_STAR);
+        ItemMeta netherStarMeta = netherStar.getItemMeta();
+        netherStarMeta.setDisplayName(ChatColor.BLUE+ "Vote for a map");
+        netherStar.setItemMeta(netherStarMeta);
+        player.getInventory().setItem(0,netherStar);
+
+      //  addMapVoteItems(player);
         // add some estra stuff for OP
         if (player.isOp()) {
             addOPLobbyItems(player);
@@ -581,38 +600,67 @@ public class Arena {
 
         // Already checked for Live or finishing, can only be recruiting or countdown here
         // start the countdown if we now have the minimum number of players as defined in the config file
+        int minPlayers = ConfigManager.getRequiredPlayers(teamSize);
         if(state.equals(GameState.RECRUITING)) {
-            if (players.size() >= ConfigManager.getRequiredPlayers()) {
+            if (players.size() >= minPlayers) {
+                System.out.println("Player joined & put us at or over required min players: " + minPlayers + ", starting countdown");
                 this.countdown = new Countdown(main, this);
                 // start the countdown
                 countdown.start();
-                System.out.println("foined");
+            } else {
+                sendPlayersNeededForCountdownMessage();
             }
         } else {
             // COUNTDOWN state
-            if(players.size() <= ConfigManager.getMaxPlayers()) {
+            if(players.size() <= maxPlayers) {
                 // not at max players yet
                 countdown.playerJoined();
-                System.out.println("foined again");
-            } else if (players.size() == ConfigManager.getMaxPlayers()) {
+            } else if (players.size() == maxPlayers) {
                 // this player puts us to max
                 countdown.atMaxPlayers();
             }
         }
     }
 
+    public void sendPlayersNeededForCountdownMessage() {
+        if (state == GameState.RECRUITING) {
+            int minPlayers = ConfigManager.getRequiredPlayers(teamSize);
+            int playersNeeded = (minPlayers - players.size());
+            sendMessage(ChatColor.AQUA + "****************************************");
+            sendMessage(ChatColor.GOLD + "Waiting for " +  playersNeeded + " more players to join");
+            sendMessage(ChatColor.AQUA + "****************************************");
+
+            if (playersRequiredRunnable != null) {
+                playersRequiredRunnable.cancel();
+            }
+            playersRequiredRunnable = new PlayersRequiredRunnable(main, this);
+            playersRequiredRunnable.start();
+        }
+
+
+        Bukkit.getScheduler().scheduleSyncDelayedTask(main, new Runnable() {
+            int delay = 0;
+            @Override
+            public void run() {
+
+                delay++;
+            }
+
+        }, 140);
+    }
+
     private void addOPLobbyItems(Player player) {
+        ItemStack glass = new ItemStack(Material.GLASS);
+        ItemMeta glassMeta = glass.getItemMeta();
+        glassMeta.setDisplayName(ChatColor.RED + "Simulate player join to speed up queue");
+        glass.setItemMeta(glassMeta);
+        player.getInventory().setItem(6, glass);
+
         ItemStack iron = new ItemStack(Material.IRON_INGOT);
         ItemMeta ironMeta = iron.getItemMeta();
         ironMeta.setDisplayName(ChatColor.RED + "Start the game");
         iron.setItemMeta(ironMeta);
         player.getInventory().setItem(7, iron);
-
-        ItemStack glass = new ItemStack(Material.GLASS);
-        ItemMeta glassMeta = glass.getItemMeta();
-        glassMeta.setDisplayName(ChatColor.RED + "Simulate player join for queue time test");
-        glass.setItemMeta(glassMeta);
-        player.getInventory().setItem(6, glass);
     }
 
     // called from connect listener when player has left the server.
@@ -625,27 +673,39 @@ public class Arena {
     // leaving players.
     // We just decide what to do below when a player leaves depending on the current game state etc.
     public void playerLeftServer(Player player) {
-        updateLobby();
         // golem & silverfish untarget this player
         untargetPlayer(player);
         UUID uuid = player.getUniqueId();
         System.out.println("player left server uuid = " + uuid.toString());
         // remove the player from the arena player list
         players.remove(uuid);
+
         // remove the player form any team they may be in
         for (Team team : teams) {
             team.removePlayer(uuid);
         }
-        // if they are a spectator no need to do anything regarding check for game win.
-        // not this checks for NOT a spectator first
-        if (player.getGameMode() != GameMode.SPECTATOR) {
-            if (state == GameState.COUNTDOWN && players.size() < ConfigManager.getRequiredPlayers()) {
-                sendMessage(ChatColor.RED + "Not enough players countdown stopped");
-                // does not restart the server as game has not started, just resets the countdown
-                reset();
-                return;
+        // if they are already out of the game remove them from that list,
+        if (IsPlayerOutOfGame(uuid)) {
+            outOfGamePlayers.remove(uuid);
+        } else {
+            // the player is still in the game
+            if (state == GameState.COUNTDOWN || state == GameState.RECRUITING) {
+                System.out.println("player left while recruiting or countdown");
+                // if less than min players & countdown is running, reset the countdown.
+                if (players.size() < ConfigManager.getRequiredPlayers(teamSize) && countdown.isRunning()) {
+                    sendMessage(ChatColor.RED + "Not enough players countdown stopped");
+                    // does not restart the server as game has not started, just resets the countdown
+                    reset(); // reset also resets teamsize if no players.
+                    return;
+                } else {
+                    int s = players.size();
+                    System.out.println("Players left on server = " + s);
+                    if (players.size() == 0) {
+                        teamSize = 0;
+                    }
+                    updateLobby();
+                }
             }
-
             if (state == GameState.LIVE) {
                 // if the player quit the server manually I'll need to make sure that all teams without players
                 // don't have beds.
@@ -666,10 +726,8 @@ public class Arena {
                 // quit (close the game) or use any inventory item that causes them to leave the game.
                 // At this point they will have eithre left the game or be back in the hub world.
                 checkGameWon();
-
             }
         }
-
     }
 
     // this uses the Sockexchange Plugin for talking between servers to let the hub server know the status of this server.
@@ -681,7 +739,7 @@ public class Arena {
         String replyString = "";
         String gameName = config.getString("game-name");
         // need to return this servers sock name, event that caused response, game status, num players, max players
-        replyString = api.getServerName() + ".report-status." + gameName + "." + state.toString() + "." + players.size() + "." + maxPlayers;
+        replyString = api.getServerName() + ".report-status." + state.toString() + "." + players.size() + "." + maxPlayers + "." + teamSize;
 
         System.out.println("Reply string:" + replyString);
         // not sure what this was for.  probably trying to fix an issue, could probably be removed.
@@ -701,8 +759,6 @@ public class Arena {
             if (team.isTeamBedLocation(location1,location2)) {
                 // set this team instances bed to broken
                 team.setBedBroken();
-                // send a message to players in that team.
-                sendMessage("Bed broken");
             }
         }
         // update all teams scoreboards - not currently working
@@ -731,6 +787,14 @@ public class Arena {
             if (team.getNumPlayers() > 0 ) {
                 team.updateScoreBoard();
             }
+        }
+        // update team part of scoreboard for all players (even out of game)
+        for (UUID uuid :players) {
+            Player player = Bukkit.getPlayer(uuid);
+            player.getScoreboard().getTeam("sbTeams1").setPrefix(scoreBoardTeams(0));
+            player.getScoreboard().getTeam("sbTeams1").setSuffix(scoreBoardTeams(4));
+            player.getScoreboard().getTeam("sbTeams2").setPrefix(scoreBoardTeams(8));
+            player.getScoreboard().getTeam("sbTeams2").setSuffix(scoreBoardTeams(12));
         }
     }
 
@@ -846,6 +910,31 @@ public class Arena {
         }
     }
 
+    // send big red text to all players in the arena
+    public void playSoundAllPlayers(int countdownSeconds) {
+        World world = Bukkit.getWorld(worldName);
+        for (UUID uuid : players) {
+            if (countdownSeconds == 30 || countdownSeconds == 20 || countdownSeconds == 15 || countdownSeconds == 10) {
+                world.playSound(Bukkit.getPlayer(uuid).getLocation(), Sound.NOTE_PLING, 100, (float) 1);
+            }
+            if (countdownSeconds < 6) {
+                world.playSound(Bukkit.getPlayer(uuid).getLocation(), Sound.NOTE_PLING, 100, (float) (1.916667 - (0.0833333 * countdownSeconds)));
+                world.playSound(Bukkit.getPlayer(uuid).getLocation(), Sound.NOTE_PLING, 100, (float) 1);
+            }
+        }
+    }
+
+    // send big red text to all players in the arena
+    public void playGameStartSounds() {
+        World world = Bukkit.getWorld(worldName);
+        for (UUID uuid : players) {
+            Location location = Bukkit.getPlayer(uuid).getLocation();
+            world.playSound(location, Sound.NOTE_PLING, 20, (float) 2);
+            world.playSound(location, Sound.NOTE_PLING, 20, (float) 1);
+            world.playSound(location, Sound.ENDERDRAGON_GROWL, 100, (float) 1);
+        }
+    }
+
     // fired from game class when a team is eliminated & from arena when a player leaves the server
     // checks to see if the game is won
     public void checkGameWon() {
@@ -896,20 +985,25 @@ public class Arena {
 
     public  Player getClosestEnemyPlayer(Team team, Entity entity) {
         // get all players within 10 blocks of entity
-        List<Player> players = new ArrayList<>();
+        List<Player> pclose = new ArrayList<>();
         for (Entity ps : entity.getNearbyEntities(10, 10, 10)) {
             if (ps instanceof Player) {
-                players.add((Player) ps);
+                // todo check if ps is out of game, if so do not add them
+                if (IsPlayerOutOfGame(ps.getUniqueId()) == false) {
+                    pclose.add((Player) ps);
+                } else {
+                  //  System.out.println("potential golem target is out of game.");
+                }
             }
         }
         // if no players
-        if (players.size() == 0) {
+        if (pclose.size() == 0) {
            // System.out.println("no players within 10 blocks of entity");
             return null;
         }
         // remove players on own team
         List<Player> sameTeamPlayer = new ArrayList<>();
-        for (Player player : players) {
+        for (Player player : pclose) {
             if(team.playerInTeam(player.getUniqueId())) {
               //  System.out.println("player " + player.getName() + " is on same team as entity");
                 sameTeamPlayer.add(player);
@@ -917,9 +1011,9 @@ public class Arena {
               //  System.out.println("player " + player.getName() + " is NOT on same team as entity");
             }
         }
-        players.removeAll(sameTeamPlayer);
+        pclose.removeAll(sameTeamPlayer);
         // if no players
-        if (players.size() == 0) {
+        if (pclose.size() == 0) {
           //  System.out.println("no enemy players within 10 blocks of entity");
             return null;
         }
@@ -927,7 +1021,7 @@ public class Arena {
 
         double d = 100;
         Player closest = null;
-        for (Player player : players) {
+        for (Player player : pclose) {
           double dist =   entity.getLocation().distance(player.getLocation());
           if (dist < d) {
               d = dist;
@@ -1026,15 +1120,20 @@ public class Arena {
             if (y < floorY) {
                 System.out.println("Teleporting player up");
                 Location playerLocation = player.getLocation();
+                int up = floorY + 1;
                 player.teleport( new Location(
                         world,
                         playerLocation.getX(),
-                        floorY,
+                        up,
                         playerLocation.getZ(),
                         playerLocation.getYaw(),
                         playerLocation.getPitch()));
             }
         }
+    }
+
+    public int GetFloorY() {
+        return this.floorY;
     }
 
     public int getMaxPlayers() {return this.maxPlayers;}
@@ -1048,5 +1147,51 @@ public class Arena {
             player.sendMessage("Game was in countdown, simulated player join in countdown");
         }
     }
+
+    public void setTeamSize(int teamSize) {
+        this.teamSize = teamSize;
+        if (teamSize == 1) {
+            this.maxPlayers = 12;
+        } else {
+            this.maxPlayers = 16;
+        }
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                ResetTeamSizeIfNoPlayers();
+            }
+        }.runTaskLater(main, 200);
+    }
+
+    public int getTeamSize() {
+       return this.teamSize;
+    }
+
+    private void ResetTeamSizeIfNoPlayers() {
+
+        if (players.size() == 0) {
+            System.out.println("Resetting team size to 0 as no players.");
+            this.teamSize = 0;
+            this.maxPlayers = 10;
+            updateLobby();
+        } else {
+            System.out.println("Not resetting team size as " + players.size() + " player(s).");
+        }
+    }
+
+    public void addOutOfGamePlayer(Player player) {
+        outOfGamePlayers.add(player.getUniqueId());
+    }
+
+    public boolean IsPlayerOutOfGame(UUID uuid) {
+        for (UUID oog : outOfGamePlayers) {
+            System.out.println("-- find " + oog);
+            if (oog.equals(uuid)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
 }

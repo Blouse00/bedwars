@@ -19,10 +19,25 @@ public class ConfigManager {
     }
 
     /* public functions can be called from other classes */
-    public  static int getRequiredPlayers() { return config.getInt("required-players");}
-    public  static int getMaxPlayers() { return config.getInt("max-players");}
+    public  static int getRequiredPlayers(int teamSize) {
+        System.out.println("get required players called teamsize = " + teamSize);
+        if (teamSize == 1) {
+         //   System.out.println("1 get required players called teamsize = " + config.getInt("required-players-1"));
+            return config.getInt("required-players-1");
+        }
+        if (teamSize == 2) {
+         //   System.out.println("2 get required players called teamsize = " + config.getInt("required-players-2"));
+            return config.getInt("required-players-2");
+        }
+        if (teamSize == 4) {
+         //   System.out.println("4 get required players called teamsize = " + config.getInt("required-players-4"));
+            return config.getInt("required-players-4");
+        }
+        return 10;
+    }
+  //  public  static int getMaxPlayers() { return config.getInt("max-players");}
     public  static int getCountdownSeconds() { return config.getInt("countdown-seconds");}
-    public  static int getTeamSize() { return config.getInt("team-size");}
+  //  public  static int getTeamSize() { return config.getInt("team-size");}
     public  static Location getLobbySpawn() {
         return new Location(
                 Bukkit.getWorld(config.getString("lobby-spawn.world")),

@@ -1,14 +1,18 @@
 package com.stewart.bedwars.instance;
 import com.stewart.bedwars.Bedwars;
+import com.stewart.bedwars.utils.ItemMetadata;
 import net.minecraft.server.v1_8_R3.EnumParticle;
 import net.minecraft.server.v1_8_R3.PacketPlayOutWorldParticles;
 import org.bukkit.*;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import static org.bukkit.Sound.CHICKEN_EGG_POP;
 
@@ -35,7 +39,10 @@ public class SummonerItem  {
     private boolean hasArmourStand;
     // the armourstand, can be null
     private ArmorStand armorStand;
+    // a list of unique values for each item summoned
+    private List<String> summonedItems;
     private int currentNumArrows;
+
     public SummonerItem(Bedwars main, Material material, int itemSpeedTicks, Location location, int id, boolean hasArmourStand) {
         this.id = id;
         // speed is stored in ticks in the config, convert it to seconds for this class
@@ -48,6 +55,7 @@ public class SummonerItem  {
         this.chunk = location.getChunk();
         this.hasArmourStand = hasArmourStand;
         setLocations();
+        summonedItems = new ArrayList<>();
         if (hasArmourStand) {
             addArmourStand();
         }
@@ -69,7 +77,7 @@ public class SummonerItem  {
     /* Public functions can be called from other classes */
 
     // is fired from the team/diaEmeSummoner class each clock tick
-    public void onTick(int currentGameSeconds) {
+    public void onTick(int currentGameSeconds, boolean dropDoubleItems) {
 
         // items with a speed of 0 are not to be dropped (for example gold needs to be upgraded before it will drop)
         if (itemSpeedSeconds > 0) {
@@ -105,9 +113,20 @@ public class SummonerItem  {
 
                     previousDropSeconds = currentGameSeconds;
 
+                  //  String rand = UUID.randomUUID().toString();
+                 //   summonedItems.add(rand);
+                    int amount = dropDoubleItems ? 2 : 1;
+                    ItemStack dropItem = new ItemStack(material, amount);
+                  //  ItemMeta itemMeta = dropItem.getItemMeta();
+                  //  ItemMetadata.setMetadata(dropItem, "sid",  rand);
+                  //  dropItem.setItemMeta(itemMeta);
+
                     World thisWorld = location.getWorld();
-                    Item ingot = thisWorld.dropItem(location, new ItemStack(material));
+                    Item ingot = thisWorld.dropItem(location, dropItem);
                     ingot.setVelocity(ingot.getVelocity().zero());
+
+                    // add the item to the list so we can keep track of it
+
                     thisWorld.playEffect(effectLocation, Effect.MOBSPAWNER_FLAMES, 200);
                     //   thisWorld.playSound(location, CHICKEN_EGG_POP, (float)0.2, (float)2);
 
@@ -118,7 +137,7 @@ public class SummonerItem  {
                         ((CraftPlayer) online).getHandle().playerConnection.sendPacket(packet);
                     }
                 } else {
-                    System.out.println("summoner id: " + id + ", too many " + material.toString() + " currently " + numItems + " not spawning any more");
+                   // System.out.println("summoner id: " + id + ", too many " + material.toString() + " currently " + numItems + " not spawning any more");
                 }
 
             }

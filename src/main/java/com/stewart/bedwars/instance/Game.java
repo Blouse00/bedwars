@@ -61,20 +61,23 @@ public class Game {
         for(UUID uuid : arena.getPlayers()) {
             Player player = Bukkit.getPlayer(uuid);
             player.getInventory().clear();
-        //   player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
-         //   player.getInventory().addItem(new ItemStack(Material.EMERALD, 64));
-        //   player.getInventory().addItem(new ItemStack(Material.FIREBALL, 64));
+            arena.addHotbarNetherStar(Bukkit.getPlayer(uuid));
+
+          arena.addWoodenSword(Bukkit.getPlayer(uuid));
+        //    player.getInventory().addItem(new ItemStack(Material.EMERALD, 64));
+         //  player.getInventory().addItem(new ItemStack(Material.FIREBALL, 64));
           //  player.getInventory().addItem(new ItemStack(Material.TNT, 64));
          //   player.getInventory().addItem(new ItemStack(Material.WOOL, 64));
-          //  player.getInventory().addItem(new ItemStack(Material.IRON_INGOT, 64));
-          //  ItemStack eggs = new ItemStack(Material.EGG, 20);
-          //  ItemMeta eggsMeta  = eggs.getItemMeta();
-        //    eggsMeta.setDisplayName("Golem spawn egg");
-        //    eggs.setItemMeta(eggsMeta);
-        //    player.getInventory().addItem(eggs);
+        //    player.getInventory().addItem(new ItemStack(Material.IRON_INGOT, 64));
+         //   player.getInventory().addItem(new ItemStack(Material.GOLD_INGOT, 64));
+           // ItemStack eggs = new ItemStack(Material.EGG, 20);
+         //   ItemMeta eggsMeta  = eggs.getItemMeta();
+          //  eggsMeta.setDisplayName("Golem spawn egg");
+         //   eggs.setItemMeta(eggsMeta);
+          //  player.getInventory().addItem(eggs);
 
             //  player.getInventory().addItem(new ItemStack(332, 20));
-          //  player.getInventory().addItem(new ItemStack(Material.SNOW_BALL, 50));
+         //   player.getInventory().addItem(new ItemStack(Material.SNOW_BALL, 50));
          //   player.getInventory().addItem(new ItemStack(Material.CARPET, 50));
             // the teams are a property of the arena instance.  This class (game) is also a property of the arena instance.
             // To get the team instance from here we have to get it from the arena instance that was passed to this class
@@ -87,7 +90,6 @@ public class Game {
             player.closeInventory();
 
             GameUtils.makePlayerArmourUnbreakable(player);
-
 
         }
     }
@@ -107,23 +109,36 @@ public class Game {
     // them.  This damage will have been cancelled.
     // If the player was killed by another player they will be in the killer variable, if not that will be null
     public void playerKilled(Player died, Player killer) {
+        // I need to get the killers team from the arena class
+        Team diedTeam = arena.getTeam(died.getUniqueId());
+        ChatColor diedColour = ChatColor.RED;
+        // could be in the lobby with no teams
+        if (diedTeam != null) {
+            diedColour = diedTeam.getTeamChatColor();
+        }
         if (killer == null) {
             // no killer, just send a message that the player died.  The player damage event can tell you (as an enum)
             // how the damage was taken (void, fire, projectile etc) so in the future we could show a better message here.
-            arena.sendMessage(died.getName() + " died!");
+            arena.sendMessage(diedColour + died.getName() + " died!");
         } else {
-            // player was killed by another player, show a message to the arena with killed and killer
-            arena.sendMessage(killer.getName() + " killed " + died.getName());
             // each players number of kills is stored in their team instance so to log the kill
-            // I need to get the killers team from the arena class
             Team killerTeam = arena.getTeam(killer.getUniqueId());
-            // call the addkill function in the players team instance (logs it to the player, not the team)
+            ChatColor killerColour = ChatColor.RED;
+            // could be in the lobby with no teams
             if (killerTeam != null) {
+                killerColour= killerTeam.getTeamChatColor();
+                // call the addkill function in the players team instance (logs it to the player, not the team)
                 killerTeam.addKill(killer.getUniqueId());
             }
+            // player was killed by another player, show a message to the arena with killed and killer
+            arena.sendMessage(killerTeam.getTeamChatColor() + killer.getName() + " killed " + killerColour + died.getName());
+
         }
         // stop them taking fall damage if teleported after falling
         died.setFallDistance(0F);
+
+        // Need to remove any detrimental efects the player may have been under
+        // but if they had team speed, put that back
         for (PotionEffect effect : died.getActivePotionEffects()) {
             died.removePotionEffect(effect.getType());
         }
@@ -140,8 +155,9 @@ public class Game {
         } else {
             // game state live
             // check if died player has team bed, first get the players team instance
-            Team diedTeam = arena.getTeam(died.getUniqueId());
+
             GameUtils.dropInventory(died);
+            arena.addHotbarNetherStar(died);
             if (diedTeam == null) {
                 // this should not happen but just for debugging
                 System.out.println("player " + died.getName() + " died but was not in a team!");
@@ -159,12 +175,15 @@ public class Game {
                     playerSpectatorForRespawn.put(died.getUniqueId(), gameSeconds);
                 } else {
                     // No bed spawn them as a spectator
-                    died.setGameMode(GameMode.SPECTATOR);
+                   // died.setGameMode(GameMode.SPECTATOR);
+                    GameUtils.makePlayerInvisibleGameEnd(died);
+                    arena.addOutOfGamePlayer(died);
                     // remove them from their team
                     diedTeam.removePlayer(died.getUniqueId());
                     died.teleport(arena.getSpectatorSpawn());
+                    // leaving scoreboard active for players out of the game
                     // this should remove the scoreboard
-                    died.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+                 //   died.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
                     // then check to see if the game has been won.
                     arena.checkGameWon();
                     if (diedTeam.getNumPlayers() == 0) {
@@ -303,6 +322,7 @@ public class Game {
                 if (player != null && diedTeam != null) {
                     //   set them back to survival and respawn then at their base
                     player.setGameMode(GameMode.SURVIVAL);
+                    arena.addWoodenSword(player);
                     diedTeam.teleportPlayerToSpawn(player);
                 }
             }
@@ -333,11 +353,15 @@ public class Game {
                     } else {
                         System.out.println("player is null, cancelling particles");
                         particleIterator = 0;
-                        particleTask.cancel();
+                        if (particleTask != null) {
+                            particleTask.cancel();
+                        }
                     }
                 } else {
                     // If "i" is zero, we cancel the task.
-                    particleTask.cancel();
+                    if (particleTask != null) {
+                        particleTask.cancel();
+                    }
                 }
             }, 0, 1);
         }

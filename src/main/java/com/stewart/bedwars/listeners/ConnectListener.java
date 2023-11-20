@@ -48,24 +48,11 @@ public class ConnectListener implements Listener {
             ism.setDisplayName(ChatColor.RED + "Return to main hub");
             compass.setItemMeta(ism);
             player.getInventory().setItem(8, compass);
+            player.getInventory().setHeldItemSlot(4);
 
             // make sure they have full health on join
             player.setHealth(20.0);
             player.setFoodLevel(20);
-
-            FileConfiguration config = main.getConfig();
-            for (String str : config.getConfigurationSection("bedwars-maps").getKeys(false)) {
-                int teamColorInt = config.getInt("bedwars-maps." + str + ".colour-int");
-                ItemStack wool = new ItemStack(new ItemStack(Material.WOOL, 1, (short) teamColorInt));
-                ItemMeta voteMeta = wool.getItemMeta();
-                voteMeta.setDisplayName("Vote for " + config.getString("bedwars-maps." + str + ".name") + " map.");
-                wool.setItemMeta(voteMeta);
-                player.getInventory().setItem(Integer.parseInt(str), wool);
-            }
-
-            player.getInventory().setHeldItemSlot(0);
-
-
             // teleport them to the lobby spawn poin
             player.teleport(ConfigManager.getLobbySpawn());
             // at the moment there is only one arena world, if we add more we will need to

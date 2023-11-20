@@ -22,10 +22,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.potion.PotionType;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 // This is a fairly large class, it contains most of the stuff I chopped out of your original listener code.
 // as you made it I'll have fewer comments here.
@@ -33,7 +30,7 @@ public class ShopEntities {
 
     private Bedwars main;
 
-    YamlConfiguration pricesConfig;
+    static YamlConfiguration pricesConfig;
 
     public ShopEntities(Bedwars main) {
         this.main = main;
@@ -100,7 +97,7 @@ public class ShopEntities {
     //-------------------SHOP INVENTORIES---------------
 
     // the inventory that is returned to the listener class when it asks for the villager shop
-    public static Inventory getVillagerShop(Player player) {
+    public static Inventory getVillagerShop(Player player, int teamColourInt) {
         Inventory inv = Bukkit.createInventory(player, 54, "" + ChatColor.DARK_GRAY + ChatColor.BOLD + "ITEM SHOP - MAIN MENU.");
 
         //GOLD SWORD - WEAPONS
@@ -143,11 +140,33 @@ public class ShopEntities {
         traps.setItemMeta(trapsMeta);
         inv.setItem(24, traps);
 
+        // SHORTCUTS
+        // 37 STONE SWORD
+        addStoneSwordToInventory(inv, 37);
+
+        // 38 IRON SWORD
+        addIronSwordToInventory(inv, 38);
+
+        // 39 WOOL BLOCKS
+        addWoolToInventory(inv, 39, teamColourInt);
+
+        // 40 STONE PICK
+        addStonePickToInventory(inv, 40);
+
+        // 41 BOW
+        addBowToInventory(inv, 41);
+
+        // 42 ARROWS
+        addArrowsToInventory(inv, 42);
+
+        // 43 GAPPLE - 3 GOLD
+        addGappleToInventory(inv, 43, "armoury.island-gapple");
+
         //FRAME
         ItemStack frame = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
         ItemMeta frameMeta = frame.getItemMeta();
         frameMeta.setDisplayName("");
-        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
+        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,44,45,46,47,48,49,50,51,52,53})
             inv.setItem(i, frame);
 
         return inv;
@@ -159,7 +178,7 @@ public class ShopEntities {
 
         //GOLD SUMMONER 1
         // only show this option if the team does not already have it
-        if (team.isGoldSummonerActive() == false) {
+       // if (team.isGoldSummonerActive() == false) {
             ItemStack goldsummoner1 = new ItemStack(Material.GOLD_INGOT);
             ItemMeta goldsummoner1Meta = goldsummoner1.getItemMeta();
             String cost = getPrice("upgrades.gold-summoner", true);
@@ -167,61 +186,61 @@ public class ShopEntities {
             goldsummoner1Meta.setLore(Arrays.asList(ChatColor.GRAY + "Click here to for team summoner " + ChatColor.GOLD + " GOLD upgrade."));
             goldsummoner1.setItemMeta(goldsummoner1Meta);
             inv.setItem(20, goldsummoner1);
-        }
+     //   }
 
         //DIAMOND SUMMONER 1
         // only show this option if the team does not already have it
-        if (team.isDiamondSummonerActive() == false) {
+     //   if (team.isDiamondSummonerActive() == false) {
             ItemStack diamondsummoner1 = new ItemStack(Material.DIAMOND);
             ItemMeta diamondsummoner1Meta = diamondsummoner1.getItemMeta();
-            String cost = getPrice( "upgrades.diamond-summoner", true);
-            diamondsummoner1Meta.setDisplayName(ChatColor.GOLD + "Diamond summoner - cost " +  cost);
+            String cost1 = getPrice( "upgrades.diamond-summoner", true);
+            diamondsummoner1Meta.setDisplayName(ChatColor.GOLD + "Diamond summoner - cost1 " +  cost1);
             diamondsummoner1Meta.setLore(Arrays.asList(ChatColor.GRAY + "Click here to for team summoner " + ChatColor.BLUE + " DIAMOND upgrade."));
             diamondsummoner1.setItemMeta(diamondsummoner1Meta);
-            inv.setItem(21, diamondsummoner1);
-        }
+            inv.setItem(29, diamondsummoner1);
+     //   }
 
         //More Summoner SPEED
         // only show this option if the team has both DIAMOND & GOLD SUMMONER
-        if (team.isDiamondSummonerActive() && team.isGoldSummonerActive() && team.isFinalSummonerActive() == false) {
+     //   if (team.isDiamondSummonerActive() && team.isGoldSummonerActive() && team.isFinalSummonerActive() == false) {
             ItemStack finalSummoner = new ItemStack(Material.WATCH);
             ItemMeta finalSummonerMeta = finalSummoner.getItemMeta();
-            String cost = getPrice( "upgrades.final-summoner", true);
-            finalSummonerMeta.setDisplayName(ChatColor.GOLD + "Team summoner speed - cost " +  cost);
+            String cost2 = getPrice( "upgrades.final-summoner", true);
+            finalSummonerMeta.setDisplayName(ChatColor.GOLD + "Team summoner speed - cost2 " +  cost2);
             finalSummonerMeta.setLore(Arrays.asList(ChatColor.GRAY + "Click here to for team summoner " + ChatColor.RED + " SPEED upgrade."));
             finalSummoner.setItemMeta(finalSummonerMeta);
-            inv.setItem(21, finalSummoner);
-        }
+            inv.setItem(38, finalSummoner);
+      //  }
 
         //TEAM SPEED 1
         // only show this option if the teams speed is un-upgraded
-        if (team.getTeamSpeed() == 0) {
+       // if (team.getTeamSpeed() == 0) {
             ItemStack teamspeed1 = new ItemStack(Material.BLAZE_ROD);
             ItemMeta teamspeed1Meta = teamspeed1.getItemMeta();
-            String cost = getPrice( "upgrades.speed-1", true);
-            teamspeed1Meta.setDisplayName(ChatColor.GOLD + "Team SPEED 1 - cost " +  cost);
+            String cost3 = getPrice( "upgrades.speed-1", true);
+            teamspeed1Meta.setDisplayName(ChatColor.GOLD + "Team SPEED 1 - cost3 " +  cost3);
             teamspeed1Meta.setLore(Arrays.asList(ChatColor.GRAY + "Click here to for team " + ChatColor.BLUE + " SPEED 1 upgrade."));
             teamspeed1.setItemMeta(teamspeed1Meta);
             inv.setItem(22, teamspeed1);
-        }
+        //}
 
         //TEAM SPEED 2
         // only show this option if the teams speed had the first upgrade
-        if (team.getTeamSpeed() == 1) {
+        //if (team.getTeamSpeed() == 1) {
             ItemStack teamspeed2 = new ItemStack(Material.ACTIVATOR_RAIL);
             ItemMeta teamspeed2Meta = teamspeed2.getItemMeta();
-            String cost = getPrice( "upgrades.speed-2", true);
-            teamspeed2Meta.setDisplayName(ChatColor.GOLD + "Team SPEED 2 - cost " +  cost);
+            String cost4 = getPrice( "upgrades.speed-2", true);
+            teamspeed2Meta.setDisplayName(ChatColor.GOLD + "Team SPEED 2 - cost4 " +  cost4);
             teamspeed2Meta.setLore(Arrays.asList(ChatColor.GRAY + "Click here to for team " + ChatColor.RED + " SPEED 2 upgrade."));
             teamspeed2.setItemMeta(teamspeed2Meta);
-            inv.setItem(23, teamspeed2);
-        }
+            inv.setItem(31, teamspeed2);
+      //  }
 
         //FRAME
         ItemStack frame = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
         ItemMeta frameMeta = frame.getItemMeta();
         frameMeta.setDisplayName("");
-        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
+        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,44,45,46,47,48,49,50,51,52,53})
             inv.setItem(i, frame);
 
         return inv;
@@ -350,14 +369,7 @@ public class ShopEntities {
         inv.setItem(22, golem);
 
         //GAPPLE
-        ItemStack gapple = new ItemStack(Material.GOLDEN_APPLE);
-        ItemMeta gappleMeta = gapple.getItemMeta();
-        cost = getPrice("armoury.gapple", true);
-        gappleMeta.setDisplayName(ChatColor.GOLD + "Golden Apple - cost " + cost);
-        gappleMeta.setLore(Arrays.asList(
-                ChatColor.GRAY + "Eat when you want to recover health."));
-        gapple.setItemMeta(gappleMeta);
-        inv.setItem(23, gapple);
+        addGappleToInventory(inv, 23, "armoury.gapple");
 
         //WATERBUCKET
         ItemStack bucket = new ItemStack(Material.WATER_BUCKET);
@@ -404,60 +416,117 @@ public class ShopEntities {
 
     //--------------SHOP SUB INVENTORIES------------------
 
-    // the inventory that is returned to the listener class when it asks for the weapon shop
-    public Inventory getWeaponShop(Player player) {
-        Inventory weaponshop = Bukkit.createInventory(player, 54, "" + ChatColor.DARK_GRAY + ChatColor.BOLD + "WEAPONS MENU.");
-
-        //STONE SWORD
+    private static void addStoneSwordToInventory(Inventory inventory, int slot) {
         ItemStack stonesword = new ItemStack(Material.STONE_SWORD);
         ItemMeta stoneswordMeta = stonesword.getItemMeta();
         String cost = getPrice("weapons.stone-sword", true);
         stoneswordMeta.setDisplayName(ChatColor.GOLD + "Stone sword - cost " + cost);
         stoneswordMeta.setLore(Arrays.asList(ChatColor.GRAY + "Stone sword."));
         stonesword.setItemMeta(stoneswordMeta);
-        weaponshop.setItem(20, stonesword);
+        inventory.setItem(slot, stonesword);
+    }
 
-        //IRON SWORD
+    private static void addIronSwordToInventory(Inventory inventory, int slot) {
         ItemStack ironsword = new ItemStack(Material.IRON_SWORD);
         ItemMeta ironswordMeta = ironsword.getItemMeta();
-        cost = getPrice("weapons.iron-sword", true);
+        String cost = getPrice("weapons.iron-sword", true);
         ironswordMeta.setDisplayName(ChatColor.GOLD + "Iron sword - cost " + cost);
         ironswordMeta.setLore(Arrays.asList(ChatColor.GRAY + "Iron sword."));
         ironsword.setItemMeta(ironswordMeta);
-        weaponshop.setItem(21, ironsword);
+        inventory.setItem(slot, ironsword);
+    }
+
+    private static void addBowToInventory(Inventory inventory, int slot) {
+        ItemStack bow = new ItemStack(Material.BOW);
+        ItemMeta bowMeta = bow.getItemMeta();
+        String cost = getPrice("weapons.bow", true);
+        bowMeta.setDisplayName(ChatColor.GOLD + "Bow - cost " + cost);
+        bowMeta.setLore(Arrays.asList(ChatColor.GRAY + "Bow."));
+        bow.setItemMeta(bowMeta);
+        inventory.setItem(slot, bow);
+    }
+
+    private static void addArrowsToInventory(Inventory inventory, int slot) {
+        ItemStack arrows = new ItemStack(Material.ARROW);
+        ItemMeta arrowsMeta = arrows.getItemMeta();
+        String cost = getPrice("weapons.arrows", true);
+        arrowsMeta.setDisplayName(ChatColor.GOLD + "Arrows - cost " + cost);
+        arrowsMeta.setLore(Arrays.asList(ChatColor.GRAY + pricesConfig.getString("weapons.arrows.amount") + " arrows."));
+        arrows.setItemMeta(arrowsMeta);
+        inventory.setItem(slot, arrows);
+    }
+
+    private static void addWoolToInventory(Inventory inventory, int slot, int teamColourInt) {
+        ItemStack wool = new ItemStack(new ItemStack(Material.WOOL, 1, (short) teamColourInt));
+        ItemMeta woolMeta = wool.getItemMeta();
+        String cost = getPrice("blocks.wool", true);
+        woolMeta.setDisplayName(ChatColor.GOLD + "Wool - cost " + cost);
+        woolMeta.setLore(Arrays.asList(ChatColor.GRAY +  pricesConfig.getString("blocks.wool.amount") + " blocks."));
+        wool.setItemMeta(woolMeta);
+        inventory.setItem(slot, wool);
+    }
+
+    private static void addStonePickToInventory(Inventory inventory, int slot) {
+        ItemStack stonepick = new ItemStack(Material.STONE_PICKAXE);
+        ItemMeta stonepickMeta = stonepick.getItemMeta();
+        String cost = getPrice("tools.stone-pick", true);
+        stonepickMeta.setDisplayName(ChatColor.GOLD + "Stone pickaxe - cost " + cost);
+        stonepickMeta.setLore(Arrays.asList(ChatColor.GRAY + "Stone pickaxe."));
+        stonepick.setItemMeta(stonepickMeta);
+        inventory.setItem(slot, stonepick);
+    }
+
+    private static void addGappleToInventory(Inventory inventory, int slot, String configPath) {
+        ItemStack gapple = new ItemStack(Material.GOLDEN_APPLE);
+        ItemMeta gappleMeta = gapple.getItemMeta();
+        String cost = getPrice(configPath, true);
+        gappleMeta.setDisplayName(ChatColor.GOLD + "Golden Apple - cost " + cost);
+        gappleMeta.setLore(Arrays.asList(
+                ChatColor.GRAY + "Eat when you want to recover health."));
+        gapple.setItemMeta(gappleMeta);
+        inventory.setItem(slot, gapple);
+    }
+
+    private static void addBarrierToInventory(Inventory inventory, int slot) {
+        ItemStack barrier = new ItemStack(Material.BARRIER);
+        ItemMeta barrierMeta = barrier.getItemMeta();
+        barrierMeta.setDisplayName(ChatColor.GOLD + "Back to shop menu.");
+        barrier.setItemMeta(barrierMeta);
+        inventory.setItem(slot, barrier);
+    }
+
+    // the inventory that is returned to the listener class when it asks for the weapon shop
+    public Inventory getWeaponShop(Player player) {
+        Inventory weaponshop = Bukkit.createInventory(player, 54, "" + ChatColor.DARK_GRAY + ChatColor.BOLD + "WEAPONS MENU.");
+
+        addBarrierToInventory(weaponshop, 0);
+
+        //STONE SWORD
+        addStoneSwordToInventory(weaponshop, 20);
+
+        //IRON SWORD
+        addIronSwordToInventory(weaponshop, 21);
 
         //DIAMOND SWORD
         ItemStack diamondsword = new ItemStack(Material.DIAMOND_SWORD);
         ItemMeta diamondswordMeta = diamondsword.getItemMeta();
-        cost = getPrice("weapons.diamond-sword", true);
+        String cost = getPrice("weapons.diamond-sword", true);
         diamondswordMeta.setDisplayName(ChatColor.GOLD + "Diamond sword - cost " + cost);
         diamondswordMeta.setLore(Arrays.asList(ChatColor.BLUE + "Diamond sword."));
         diamondsword.setItemMeta(diamondswordMeta);
         weaponshop.setItem(22, diamondsword);
 
         //BOW
-        ItemStack bow = new ItemStack(Material.BOW);
-        ItemMeta bowMeta = bow.getItemMeta();
-        cost = getPrice("weapons.bow", true);
-        bowMeta.setDisplayName(ChatColor.GOLD + "Bow - cost " + cost);
-        bowMeta.setLore(Arrays.asList(ChatColor.GRAY + "Bow."));
-        bow.setItemMeta(bowMeta);
-        weaponshop.setItem(23, bow);
+        addBowToInventory(weaponshop, 23);
 
         //ARROWS
-        ItemStack arrows = new ItemStack(Material.ARROW);
-        ItemMeta arrowsMeta = arrows.getItemMeta();
-        cost = getPrice("weapons.arrows", true);
-        arrowsMeta.setDisplayName(ChatColor.GOLD + "Arrows - cost " + cost);
-        arrowsMeta.setLore(Arrays.asList(ChatColor.GRAY + pricesConfig.getString("weapons.arrows.amount") + " arrows."));
-        arrows.setItemMeta(arrowsMeta);
-        weaponshop.setItem(24, arrows);
+        addArrowsToInventory(weaponshop, 24);
 
         //FRAME
         ItemStack weaponframe = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
         ItemMeta frameMeta = weaponframe.getItemMeta();
         frameMeta.setDisplayName("");
-        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
+        for (int i : new int[]{1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
             weaponshop.setItem(i, weaponframe);
 
         return weaponshop;
@@ -467,7 +536,7 @@ public class ShopEntities {
     public Inventory getArmourShop(Player player) {
 
         Inventory armourshop = Bukkit.createInventory(player, 54, "" + ChatColor.DARK_GRAY + ChatColor.BOLD + "ARMOUR MENU.");
-
+        addBarrierToInventory(armourshop, 0);
         //CHAINMAIL
         ItemStack chainmail = new ItemStack(Material.CHAINMAIL_CHESTPLATE);
         ItemMeta chainmailMeta = chainmail.getItemMeta();
@@ -499,7 +568,7 @@ public class ShopEntities {
         ItemStack armourframe = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
         ItemMeta armourframeMeta = armourframe.getItemMeta();
         armourframeMeta.setDisplayName("");
-        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
+        for (int i : new int[]{1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
             armourshop.setItem(i, armourframe);
         return armourshop;
 
@@ -509,20 +578,14 @@ public class ShopEntities {
     public Inventory getToolShop(Player player) {
         //TOOLS
         Inventory toolshop = Bukkit.createInventory(player, 54, "" + ChatColor.DARK_GRAY + ChatColor.BOLD + "TOOL MENU.");
-
+        addBarrierToInventory(toolshop, 0);
         //STONE PICK
-        ItemStack stonepick = new ItemStack(Material.STONE_PICKAXE);
-        ItemMeta stonepickMeta = stonepick.getItemMeta();
-        String cost = getPrice("tools.stone-pick", true);
-        stonepickMeta.setDisplayName(ChatColor.GOLD + "Stone pickaxe - cost " + cost);
-        stonepickMeta.setLore(Arrays.asList(ChatColor.GRAY + "Stone pickaxe."));
-        stonepick.setItemMeta(stonepickMeta);
-        toolshop.setItem(12, stonepick);
+        addStonePickToInventory(toolshop, 12);
 
         //IRON PICK
         ItemStack ironpick = new ItemStack(Material.IRON_PICKAXE);
         ItemMeta ironpickMeta = ironpick.getItemMeta();
-        cost = getPrice("tools.iron-pick", true);
+        String cost = getPrice("tools.iron-pick", true);
         ironpickMeta.setDisplayName(ChatColor.GOLD + "Iron pickaxe - cost " + cost);
         ironpickMeta.setLore(Arrays.asList(ChatColor.GRAY + "Iron pickaxe."));
         ironpick.setItemMeta(ironpickMeta);
@@ -586,7 +649,7 @@ public class ShopEntities {
         ItemStack toolframe = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
         ItemMeta toolframeMeta = toolframe.getItemMeta();
         toolframeMeta.setDisplayName("");
-        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
+        for (int i : new int[]{1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
             toolshop.setItem(i, toolframe);
 
         return toolshop;
@@ -597,21 +660,14 @@ public class ShopEntities {
     public  Inventory getBlockShop(Player player, int teamColorInt) {
         //BLOCKS
         Inventory blockshop = Bukkit.createInventory(player, 54, "" + ChatColor.DARK_GRAY + ChatColor.BOLD + "BLOCK MENU.");
-
+        addBarrierToInventory(blockshop, 0);
         //WOOL
-        // wool and glass get set to the passed team color int
-        ItemStack wool = new ItemStack(new ItemStack(Material.WOOL, 1, (short) teamColorInt));
-        ItemMeta woolMeta = wool.getItemMeta();
-        String cost = getPrice("blocks.wool", true);
-        woolMeta.setDisplayName(ChatColor.GOLD + "Wool - cost " + cost);
-        woolMeta.setLore(Arrays.asList(ChatColor.GRAY +  pricesConfig.getString("blocks.wool.amount") + " blocks."));
-        wool.setItemMeta(woolMeta);
-        blockshop.setItem(20, wool);
+        addWoolToInventory(blockshop, 20, teamColorInt);
 
         //GLASS
         ItemStack glass = new ItemStack(Material.STAINED_GLASS, 1, (short) teamColorInt);
         ItemMeta glassMeta = glass.getItemMeta();
-        cost = getPrice("blocks.glass", true);
+        String cost = getPrice("blocks.glass", true);
         glassMeta.setDisplayName(ChatColor.GOLD + "Stained glass - cost " + cost);
         glassMeta.setLore(Arrays.asList(ChatColor.GRAY + pricesConfig.getString("blocks.glass.amount") + " blocks."));
         glass.setItemMeta(glassMeta);
@@ -675,7 +731,7 @@ public class ShopEntities {
         ItemStack blockframe = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
         ItemMeta blockframeMeta = blockframe.getItemMeta();
         blockframeMeta.setDisplayName("");
-        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
+        for (int i : new int[]{1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
             blockshop.setItem(i, blockframe);
 
         return blockshop;
@@ -684,7 +740,7 @@ public class ShopEntities {
     // the inventory that is returned to the listener class when it asks for the trap shop
     public Inventory getBlockTrapShop(Player player) {
         Inventory blocktrapshop = Bukkit.createInventory(player, 54, "" + ChatColor.DARK_GRAY + ChatColor.BOLD + "BLOCK TRAPS MENU.");
-
+        addBarrierToInventory(blocktrapshop, 0);
         //STONEFISH
         ItemStack andesite = new ItemStack(Material.STONE);
         // The line below turns the Stone into Andesite (sets its data value).
@@ -736,7 +792,7 @@ public class ShopEntities {
         ItemStack blocktrapframe = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
         ItemMeta blocktrapframeMeta = blocktrapframe.getItemMeta();
         blocktrapframeMeta.setDisplayName("");
-        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
+        for (int i : new int[]{1,2,3,4,5,6,7,8,9,17,18,26,27,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53})
             blocktrapshop.setItem(i, blocktrapframe);
 
         return blocktrapshop;
@@ -748,39 +804,127 @@ public class ShopEntities {
     // I use this to more easily check if the player has enough to pay for an item and to remove the items from their
     // inventory
 
+    // These shop items are in shortcuts as well as their individual shop, made functions to prevent duplicate code.
+    public void BuyStoneSword(Player player) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+        if (playerItemInventory.hasAmount(pricesConfig, "weapons.stone-sword", true)) {
+            // playerItemInventory.removeIron(5);
+            ItemStack itemStack = new ItemStack(Material.STONE_SWORD, 1);
+            ItemMeta itemMeta = itemStack.getItemMeta();
+            itemMeta.spigot().setUnbreakable(true);
+            itemStack.setItemMeta(itemMeta);
+            player.getInventory().addItem(itemStack);
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "stone sword" + ChatColor.GREEN + " for " + getPrice("weapons.stone-sword", true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.stone-sword", false) + " to buy this item.");
+        }
+    }
+
+    public void BuyIronSword(Player player) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+        if (playerItemInventory.hasAmount(pricesConfig, "weapons.iron-sword", true)) {
+            //playerItemInventory.removeGold(10);
+            ItemStack itemStack = new ItemStack(Material.IRON_SWORD, 1);
+            ItemMeta itemMeta = itemStack.getItemMeta();
+            itemMeta.spigot().setUnbreakable(true);
+            itemStack.setItemMeta(itemMeta);
+            player.getInventory().addItem(itemStack);
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought an " + ChatColor.BLUE + "iron sword" + ChatColor.GREEN + " for " + getPrice("weapons.iron-sword", true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.iron-sword", false) +" to buy this item.");
+        }
+    }
+
+    public void BuyBow(Player player) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+        if (playerItemInventory.hasAmount(pricesConfig, "weapons.bow", true)) {
+            //playerItemInventory.removeDiamond(5);
+            ItemStack itemStack = new ItemStack(Material.BOW, 1);
+            ItemMeta itemMeta = itemStack.getItemMeta();
+            itemMeta.spigot().setUnbreakable(true);
+            itemStack.setItemMeta(itemMeta);
+            player.getInventory().addItem(itemStack);
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "bow" + ChatColor.GREEN + " for " + getPrice("weapons.bow", true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.bow", false) + " to buy this item.");
+        }
+    }
+
+    public void BuyArrows(Player player) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+        if (playerItemInventory.hasAmount(pricesConfig, "weapons.arrows", true)) {
+            player.getInventory().addItem(new ItemStack(Material.ARROW, 8));
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought " + pricesConfig.getString("weapons.arrows.amount") + ChatColor.BLUE + " arrows" + ChatColor.GREEN + " for " + getPrice("weapons.arrows", true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.arrows", false) + " to buy this item.");
+        }
+    }
+
+    public void BuyStonePick(Player player) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+        String configItem = "tools.stone-pick";
+        if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
+            // playerItemInventory.removeIron(15);
+            ItemStack itemStack = new ItemStack(Material.STONE_PICKAXE, 1);
+            ItemMeta itemMeta = itemStack.getItemMeta();
+            itemMeta.spigot().setUnbreakable(true);
+            itemStack.setItemMeta(itemMeta);
+            player.getInventory().addItem(itemStack);
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "stone pickaxe" + ChatColor.GREEN + " for " + getPrice(configItem, true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
+        }
+    }
+
+    public void BuyGapple(Player player, String configItem) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+
+        if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
+            // playerItemInventory.removeEmerald(1);
+            player.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE, 1));
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "golden apple" + ChatColor.GREEN + " for " + getPrice(configItem, true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
+        }
+    }
+
+    public void BuyWoolBlock(Player player, int teamColorInt) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+        String configItem = "blocks.wool";
+        if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
+            //  playerItemInventory.removeIron(5);
+            int amount = pricesConfig.getInt(configItem + ".amount");
+            player.getInventory().addItem(new ItemStack(Material.WOOL, amount, (short) teamColorInt));
+            //
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought " + amount  + ChatColor.BLUE + " blocks of wool" + ChatColor.GREEN + " for " + getPrice(configItem, true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
+        }
+    }
+
+    private void BackToVillagerShop(Player player) {
+        player.closeInventory();
+        int teamColorInt = main.getArenaManager().getArena(player).getTeam(player.getUniqueId()).getTeamColorInt();
+        player.openInventory(getVillagerShop(player, teamColorInt));
+    }
+
     // Called when clicking to buy something from the weapon shop, it is passed the player and the slot number that was
     // clicked on
     public  void WeaponShopItemClick(Player player, int slot) {
         // my player inventory class
         PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
         switch (slot) {
+            case 0:
+                // Back to main shop
+               BackToVillagerShop(player);
+                break;
             case 20:
                 // Buy stone sword
-                if (playerItemInventory.hasAmount(pricesConfig, "weapons.stone-sword", true)) {
-                   // playerItemInventory.removeIron(5);
-                    ItemStack itemStack = new ItemStack(Material.STONE_SWORD, 1);
-                    ItemMeta itemMeta = itemStack.getItemMeta();
-                    itemMeta.spigot().setUnbreakable(true);
-                    itemStack.setItemMeta(itemMeta);
-                    player.getInventory().addItem(itemStack);
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "stone sword" + ChatColor.GREEN + " for " + getPrice("weapons.stone-sword", true));
-                } else {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.stone-sword", false) + " to buy this item.");
-                }
+                BuyStoneSword(player);
                 break;
             case 21:
                 // Buy iron sword
-                if (playerItemInventory.hasAmount(pricesConfig, "weapons.iron-sword", true)) {
-                    //playerItemInventory.removeGold(10);
-                    ItemStack itemStack = new ItemStack(Material.IRON_SWORD, 1);
-                    ItemMeta itemMeta = itemStack.getItemMeta();
-                    itemMeta.spigot().setUnbreakable(true);
-                    itemStack.setItemMeta(itemMeta);
-                    player.getInventory().addItem(itemStack);
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought an " + ChatColor.BLUE + "iron sword" + ChatColor.GREEN + " for " + getPrice("weapons.iron-sword", true));
-                } else {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.iron-sword", false) +" to buy this item.");
-                }
+                BuyIronSword(player);
                 break;
             case 22:
                 // Buy diamond sword
@@ -798,27 +942,11 @@ public class ShopEntities {
                 break;
             case 23:
                 // Buy bow
-                if (playerItemInventory.hasAmount(pricesConfig, "weapons.bow", true)) {
-                    //playerItemInventory.removeDiamond(5);
-                    ItemStack itemStack = new ItemStack(Material.BOW, 1);
-                    ItemMeta itemMeta = itemStack.getItemMeta();
-                    itemMeta.spigot().setUnbreakable(true);
-                    itemStack.setItemMeta(itemMeta);
-                    player.getInventory().addItem(itemStack);
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "bow" + ChatColor.GREEN + " for " + getPrice("weapons.bow", true));
-                } else {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.bow", false) + " to buy this item.");
-                }
+                BuyBow(player);
                 break;
             case 24:
                 // Buy arrows
-                if (playerItemInventory.hasAmount(pricesConfig, "weapons.arrows", true)) {
-                    playerItemInventory.removeGold(5);
-                    player.getInventory().addItem(new ItemStack(Material.ARROW, 8));
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought " + pricesConfig.getString("weapons.arrows.amount") + ChatColor.BLUE + " arrows" + ChatColor.GREEN + " for " + getPrice("weapons.arrows", true));
-                } else {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.arrows", false) + " to buy this item.");
-                }
+                BuyArrows(player);
                 break;
             default:
                 return;
@@ -830,6 +958,10 @@ public class ShopEntities {
         PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
 
         switch (slot) {
+            case 0:
+                // Back to main shop
+                BackToVillagerShop(player);
+                break;
             case 21:
                 if (player.getInventory().getChestplate() != null && player.getInventory().getChestplate().getType().equals(Material.LEATHER_CHESTPLATE) == false) {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "Item not bought - you're already wearing this or better!");
@@ -899,20 +1031,13 @@ public class ShopEntities {
         PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
         String configItem = "";
         switch (slot) {
+            case 0:
+                // Back to main shop
+                BackToVillagerShop(player);
+                break;
             case 12:
                 // Buy stone pickaxe
-                configItem = "tools.stone-pick";
-                if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
-                   // playerItemInventory.removeIron(15);
-                    ItemStack itemStack = new ItemStack(Material.STONE_PICKAXE, 1);
-                    ItemMeta itemMeta = itemStack.getItemMeta();
-                    itemMeta.spigot().setUnbreakable(true);
-                    itemStack.setItemMeta(itemMeta);
-                    player.getInventory().addItem(itemStack);
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "stone pickaxe" + ChatColor.GREEN + " for " + getPrice(configItem, true));
-                } else {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
-                }
+                BuyStonePick(player);
                 break;
             case 13:
                 // Buy iron pickaxe
@@ -1030,18 +1155,13 @@ public class ShopEntities {
 
         String configItem = "";
         switch (slot) {
+            case 0:
+                // Back to main shop
+                BackToVillagerShop(player);
+                break;
             case 20:
                 // Buy wool
-                configItem = "blocks.wool";
-                if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
-                  //  playerItemInventory.removeIron(5);
-                    int amount = pricesConfig.getInt(configItem + ".amount");
-                    player.getInventory().addItem(new ItemStack(Material.WOOL, amount, (short) teamColorInt));
-                    //
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought " + amount  + ChatColor.BLUE + " blocks of wool" + ChatColor.GREEN + " for " + getPrice(configItem, true));
-                } else {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
-                }
+               BuyWoolBlock(player, teamColorInt);
                 break;
             case 21:
                 // Buy glass
@@ -1144,6 +1264,10 @@ public class ShopEntities {
         PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
         String configItem = "";
         switch (slot) {
+            case 0:
+                // Back to main shop
+                BackToVillagerShop(player);
+                break;
             case 20:
                 // Buy Stonefish
                 configItem = "traps.stonefish";
@@ -1226,16 +1350,18 @@ public class ShopEntities {
                         // playerItemInventory.removeDiamond(1);
                         //
                         team.startGoldSummoner();
-                        player.closeInventory();
-                        player.openInventory(getBlazeShop(player, team));
+                     //   player.closeInventory();
+                     //   player.openInventory(getBlazeShop(player, team));
                         //
                         player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You have upgraded to the " + ChatColor.GOLD + "GOLD-1" + ChatColor.GREEN + " summoner.");
                     } else {
                         player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this upgrade.");
                     }
+                } else {
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You already have this upgrade.");
                 }
                 break;
-            case 21:
+            case 29:
                 // Diamond-1 summoner upgrade.
                 // only fire if they dont already have it
                 if (team.isDiamondSummonerActive() == false) {
@@ -1243,60 +1369,79 @@ public class ShopEntities {
                     if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                         //playerItemInventory.removeEmerald(1);
                         team.startDiamondSummoner();
-                        player.closeInventory();
-                        player.openInventory(getBlazeShop(player, team));
+                      //  player.closeInventory();
+                     //   player.openInventory(getBlazeShop(player, team));
                         //
                         player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You have upgraded to the " + ChatColor.BLUE + "DIAMOND-1" + ChatColor.GREEN + " summoner.");
                     } else {
                         player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this upgrade.");
                     }
                 } else {
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You already have this upgrade.");
+                }
+                break;
+            case 38:
+                if (!team.isFinalSummonerActive()) {
+
                     // if both diamond & gold active but final not, this should be the option
-                    if (team.isGoldSummonerActive() && team.isDiamondSummonerActive() && team.isFinalSummonerActive() == false) {
+                    if (team.isGoldSummonerActive() && team.isDiamondSummonerActive()) {
                         configItem = "upgrades.final-summoner";
                         if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
                             //playerItemInventory.removeEmerald(1);
                             team.startFinalSummoner();
-                            player.closeInventory();
-                            player.openInventory(getBlazeShop(player, team));
+                         //   player.closeInventory();
+                         ///   player.openInventory(getBlazeShop(player, team));
                             //
                             player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You have upgraded to the " + ChatColor.RED + "SPEED" + ChatColor.GREEN + " summoner.");
                         } else {
                             player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this upgrade.");
                         }
+                    } else {
+                        player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need to buy both gold and diamond summoner upgrades before this one.");
                     }
+                } else {
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You already have this upgrade.");
                 }
+
                 break;
             case 22:
                 // Speed-1 upgrade.
-                configItem = "upgrades.speed-1";
-                if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
-                   team.applySpeed1();
-                    //  *** NOTE ***   For the sake of testing, then to switch off the potion effects, I've added the line below to the "spawn" command.
-                    //  *** NOTE ***   We need a separate method which runs when players leave the game (also at game end), which removes any residual potion effects.
-                    //                 The code for speed removal would be:    if (player.hasPotionEffect(PotionEffectType.SPEED) == true) { player.removePotionEffect(PotionEffectType.SPEED); }
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You have enabled team " + ChatColor.BLUE + "SPEED 1" + ChatColor.GREEN + " upgrade!");
-                    player.closeInventory();
-                    player.openInventory(getBlazeShop(player, team));
+                if (team.getTeamSpeed() == 0) {
+                    configItem = "upgrades.speed-1";
+                    if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
+                        team.applySpeed1();
+                        //  *** NOTE ***   For the sake of testing, then to switch off the potion effects, I've added the line below to the "spawn" command.
+                        //  *** NOTE ***   We need a separate method which runs when players leave the game (also at game end), which removes any residual potion effects.
+                        //                 The code for speed removal would be:    if (player.hasPotionEffect(PotionEffectType.SPEED) == true) { player.removePotionEffect(PotionEffectType.SPEED); }
+                        player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You have enabled team " + ChatColor.BLUE + "SPEED 1" + ChatColor.GREEN + " upgrade!");
+                     //   player.closeInventory();
+                      //  player.openInventory(getBlazeShop(player, team));
+                    } else {
+                        player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this upgrade.");
+                    }
                 } else {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this upgrade.");
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You already have this upgrade.");
                 }
                 break;
-            case 23:
+            case 31:
                 // Speed-2 upgrade.
-                configItem = "upgrades.speed-2";
-                if (playerItemInventory.hasAmount(pricesConfig, configItem, false) == false) {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this upgrade.");
-                    return;
-                }
-                if (player.hasPotionEffect(PotionEffectType.SPEED) == true) {
+                if (team.getTeamSpeed() == 0) {
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need to buy speed level 1 first, before you can buy this upgrade.");
+                } else if (team.getTeamSpeed() == 2) {
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You already have this upgrade.");
+                } else {
+                    configItem = "upgrades.speed-2";
+                    if (playerItemInventory.hasAmount(pricesConfig, configItem, false) == false) {
+                        player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this upgrade.");
+                        return;
+                    }
                     playerItemInventory.hasAmount(pricesConfig, configItem, true);
                     //  *** NOTE ***   The line below applies to the player only, but you would obviously need to loop through and apply it to all the player's team-mates.
                     team.applySpeed2();
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You have bought team " + ChatColor.BLUE + "SPEED 2" + ChatColor.GREEN + " upgrade!");
-                    player.closeInventory();
-                    player.openInventory(getBlazeShop(player, team));
-                } else { player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need to buy speed level 1 first, before you can buy this upgrade."); }
+                //    player.closeInventory();
+                   // player.openInventory(getBlazeShop(player, team));
+                }
                 break;
 
 
@@ -1514,14 +1659,7 @@ public class ShopEntities {
                 break;
             case 23:
                 // Buy gapple
-                configItem = "armoury.gapple";
-                if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
-                   // playerItemInventory.removeEmerald(1);
-                    player.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE, 1));
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "golden apple" + ChatColor.GREEN + " for " + getPrice(configItem, true));
-                } else {
-                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
-                }
+                BuyGapple(player, "armoury.gapple");
                 break;
             case 24:
                 // Buy water bucket
@@ -1565,7 +1703,7 @@ public class ShopEntities {
         }
     }
 
-    private String getPrice(String item, boolean withColorAndFullStop) {
+    private static String getPrice(String item, boolean withColorAndFullStop) {
         int cost = pricesConfig.getInt(item + ".price");
         String currency = pricesConfig.getString(item + ".currency");
         String ret = "";

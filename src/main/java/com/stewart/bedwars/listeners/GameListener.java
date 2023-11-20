@@ -6,9 +6,7 @@ import com.stewart.bedwars.Bedwars;
 import com.stewart.bedwars.GameState;
 import com.stewart.bedwars.instance.Arena;
 import com.stewart.bedwars.team.Team;
-import com.stewart.bedwars.utils.ChatUtils;
-import com.stewart.bedwars.utils.GameUtils;
-import com.stewart.bedwars.utils.ShopEntities;
+import com.stewart.bedwars.utils.*;
 import net.minecraft.server.v1_8_R3.EntityIronGolem;
 import net.minecraft.server.v1_8_R3.NBTTagCompound;
 import org.bukkit.*;
@@ -20,16 +18,18 @@ import org.bukkit.craftbukkit.v1_8_R3.entity.CraftSilverfish;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftTNTPrimed;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
-import org.bukkit.event.player.PlayerBedEnterEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerInteractAtEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.*;
+import org.bukkit.event.weather.ThunderChangeEvent;
+import org.bukkit.event.weather.WeatherChangeEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.potion.PotionEffect;
@@ -61,11 +61,12 @@ public class GameListener implements Listener {
             }
         System.out.println("Damage type = " + ev.getCause().toString());
 
+
         if (ev instanceof EntityDamageByEntityEvent) {
 
-            System.out.println("Entity damage entity event");
+         //   System.out.println("Entity damage entity event");
             EntityDamageByEntityEvent event = (EntityDamageByEntityEvent) ev;
-            System.out.println("Damager = " + event.getDamager().toString());
+          //  System.out.println("Damager = " + event.getDamager().toString());
             // damaged by an entity
             // each time a player damages a player I need to log who damaged who in a hashmap in the arena
             // this allows me to determine who killed a player in the EntityDamageEntity event above.
@@ -73,9 +74,14 @@ public class GameListener implements Listener {
                 Player damaged =  (Player) event.getEntity();
                 Player damager =  (Player) event.getDamager();
                 Arena arena = main.getArenaManager().getArena(damaged);
+                // either player is out of the game
+                if ((arena.IsPlayerOutOfGame(damaged.getUniqueId())) || (arena.IsPlayerOutOfGame(damaged.getUniqueId()))) {
+                    event.setCancelled(true);
+                    return;
+                }
                 // make sure the damager is no longer spawn protected.
                 arena.getGame().removeSpawnProtect(damager);
-                // check if the player is currently spawn protected.
+                // check if the damaged player is currently spawn protected or the damager is out of the game
                 if (arena.getGame().playerSpawnProtected(damaged)) {
                     event.setCancelled(true);
                     return;
@@ -95,6 +101,16 @@ public class GameListener implements Listener {
                     CheckPlayerDies(damaged, ev);
                 }
                 return;
+            }
+            // out of game players should not be able to cause damage
+            if (event.getDamager() instanceof Player) {
+                Player player = (Player) event.getDamager();
+                Arena arena = main.getArenaManager().getFirstArena();
+                if (arena.IsPlayerOutOfGame(player.getUniqueId())) {
+                    System.out.println("Out of game player damaging another!");
+                    ev.setCancelled(true);
+                    return;
+                }
             }
             // if player damaged by silverfish or golem
             if (event.getEntity() instanceof Player &&
@@ -142,6 +158,7 @@ public class GameListener implements Listener {
                 }
                 return;
             }
+
             if(event.getDamager() instanceof Snowball) {
                 Snowball sn = (Snowball)event.getDamager();
                 if(sn.getShooter() instanceof Player) {
@@ -161,6 +178,11 @@ public class GameListener implements Listener {
                 if (ev.getEntity() instanceof Player) {
                     // get the player that took damage
                     Player player = (Player) ev.getEntity();
+                    Arena arena = main.getArenaManager().getFirstArena();
+                    if (arena.IsPlayerOutOfGame(player.getUniqueId())) {
+                        ev.setCancelled(true);
+                        return;
+                    }
                     // need to find out if another player killed this player, this event does not expose
                     // who caused the damage it can only tell us if it was an ENTITY_ATTACK or not.
                     CheckPlayerDies(player, ev);
@@ -204,8 +226,8 @@ public class GameListener implements Listener {
     }
 
     private void CheckPlayerDies(Player player, EntityDamageEvent ev) {
-        System.out.println("Check player dies fired damage = " + ev.getFinalDamage());
-        System.out.println("player health = " + player.getHealth());
+      //  System.out.println("Check player dies fired damage = " + ev.getFinalDamage());
+      //  System.out.println("player health = " + player.getHealth());
         if (player.getHealth() - ev.getFinalDamage() <= 0) {
             System.out.println("Player would have died");
             // cancel death
@@ -497,7 +519,6 @@ public class GameListener implements Listener {
 
             //  Shoots fireball (note that explosion radius is dealt with in another event).
             if (((clic == Action.RIGHT_CLICK_BLOCK) || (clic == Action.RIGHT_CLICK_AIR)) && (player.getInventory().getItemInHand() != null)) {
-                System.out.println("Right click");
                 if ((player.getInventory().getItemInHand().getType() == Material.FIREBALL)) {
                     player.launchProjectile(Fireball.class, player.getLocation().getDirection());
                     if (player.getInventory().getItemInHand().getAmount() == 1) {
@@ -517,6 +538,14 @@ public class GameListener implements Listener {
                     if (makeGolem(player)) {
                       //  GameUtils.reduceInHandByOne(player);
                     }
+                }
+
+                int slot = player.getInventory().getHeldItemSlot();
+                if (slot == 8) {
+                    //open game menu
+                    GameInventory gameInventory = new GameInventory(main);
+                    player.openInventory(gameInventory.getGameInventory(player));
+                    clickevent.setCancelled(true);
                 }
             }
 
@@ -647,6 +676,15 @@ public class GameListener implements Listener {
         if (e.getSlotType().equals(InventoryType.SlotType.ARMOR) || state == GameState.COUNTDOWN || state == GameState.RECRUITING) {
             // dot want folk moving armour or doing anything with inventory in lobby
             e.setCancelled(true);
+            // now check for map vote
+                // below here fires the item click event I've moved to the shopentites class for each of the different shop types
+                if (ChatColor.translateAlternateColorCodes('&', e.getClickedInventory().getTitle())
+                        .equals("" + ChatColor.DARK_GRAY + ChatColor.BOLD + "VOTE FOR A MAP.") &&
+                        e.getCurrentItem() != null) {
+                    main.getArenaManager().getArena(player).mapVote(player, e.getRawSlot());
+                    // the shop click function handles what to do depending on the slot that was clicked
+                   // lobby.getGameManager().gameChosenFromInventory(player, e.getRawSlot());
+                }
         }
 
         if (e.getClickedInventory().getType().equals(InventoryType.CRAFTING)) {
@@ -665,7 +703,33 @@ public class GameListener implements Listener {
                 return;
             }
 
+            // below here fires the item click event I've moved to the shopentites class for each of the different shop types
+            if (ChatColor.translateAlternateColorCodes('&', e.getClickedInventory().getTitle())
+                    .equals("" + ChatColor.DARK_GRAY + ChatColor.BOLD + "GAME MENU.") &&
+                    e.getCurrentItem() != null) {
+                e.setCancelled(true);
+            }
+
+            if (e.getCurrentItem().getType().equals(Material.NETHER_STAR)) {
+                // game menu netherstar
+                System.out.println("NOOOOOOOOOO");
+                e.setCancelled(true);
+            }
+
             ShopEntities shop = new ShopEntities(main);
+
+            if (ChatColor.translateAlternateColorCodes('&', e.getClickedInventory().getTitle())
+                    .equals("" + ChatColor.DARK_GRAY + ChatColor.BOLD + "GAME MENU.") &&
+                    e.getCurrentItem() != null) {
+                if (e.getRawSlot() == 22) {
+                    // leave the game
+                    player.sendTitle("", "");
+                    ByteArrayDataOutput out = ByteStreams.newDataOutput();
+                    out.writeUTF("Connect");
+                    out.writeUTF("Lobby");
+                    player.sendPluginMessage(main, "BungeeCord", out.toByteArray());
+                }
+            }
 
             // this is what you made but split up a bit into different classes
             // when the player clicks in the main item shop
@@ -700,8 +764,39 @@ public class GameListener implements Listener {
                         //BLOCK TRAPS
                         player.openInventory(shop.getBlockTrapShop(player));
                         break;
+                    case 37:
+                        // STONE SWORD
+                        shop.BuyStoneSword(player);
+                        break;
+                    case 38:
+                        //IRON SWORD;
+                        shop.BuyIronSword(player);
+                        break;
+                    case 39:
+                        // WOOL BLOCKS
+                        int teamColorInt2 = main.getArenaManager().getArena(player).getTeam(player.getUniqueId()).getTeamColorInt();
+                        shop.BuyWoolBlock(player, teamColorInt2);
+                        break;
+                    case 40:
+                        // STONE PICK
+                        shop.BuyStonePick(player);
+                        break;
+                    case 41:
+                        // BOW
+                        shop.BuyBow(player);
+                        break;
+                    case 42:
+                        // ARROWS
+                        shop.BuyArrows(player);
+                        break;
+                    case 43:
+                        // GAPPLE
+                        shop.BuyGapple(player, "armoury.island-gapple");
+                        break;
                     default:
                         return;
+
+
                 }
             }
 
@@ -792,10 +887,14 @@ public class GameListener implements Listener {
     @EventHandler
     public void onPlayerDropItem(PlayerDropItemEvent event){
         Player player = event.getPlayer();
-        GameState s = main.getArenaManager().getArena(player).getState();
+        GameState s = main.getArenaManager().getFirstArena().getState();
 
         if (s== GameState.COUNTDOWN || s == GameState.RECRUITING ) {
             event.setCancelled(true);
+        } else {
+            if (event.getItemDrop().getItemStack().getType() == Material.NETHER_STAR)  {
+            event.setCancelled(true);
+            }
         }
     }
 
@@ -810,7 +909,8 @@ public class GameListener implements Listener {
 
         if (entity.getType() == EntityType.VILLAGER) {
             // open the shop inventory found in the ShopEntity's class
-            player.openInventory(shop.getVillagerShop(player));
+            int teamColorInt = main.getArenaManager().getArena(player).getTeam(player.getUniqueId()).getTeamColorInt();
+            player.openInventory(shop.getVillagerShop(player, teamColorInt));
         }
 
         if (entity.getType() == EntityType.BLAZE) {
@@ -845,7 +945,8 @@ public class GameListener implements Listener {
             // this is where i was having the first click on villager problem.
             // having this event open the sop inventory fixed it for me and didn't seem to have any
             // ill effects for you who didn't have the issue.
-            player.openInventory(ShopEntities.getVillagerShop(player));
+            int teamColorInt = main.getArenaManager().getArena(player).getTeam(player.getUniqueId()).getTeamColorInt();
+            player.openInventory(ShopEntities.getVillagerShop(player, teamColorInt));
         }
         if(e.getInventory().getType() == InventoryType.ANVIL){
             e.setCancelled(true);
@@ -901,68 +1002,141 @@ public class GameListener implements Listener {
 
         if (s== GameState.RECRUITING || s == GameState.COUNTDOWN ) {
             // in the lobby
-            int slot = player.getInventory().getHeldItemSlot();
-            System.out.println("Slot " + slot + " clicked");
-            if (slot == 8) {
-                // player leave the game (compass)
-                player.sendTitle("", "");
-                ByteArrayDataOutput out = ByteStreams.newDataOutput();
-                out.writeUTF("Connect");
-                out.writeUTF("Lobby");
-                player.sendPluginMessage(main, "BungeeCord", out.toByteArray());
-            } else if (slot == 7) { // op start the game
-                Arena arena = main.getArenaManager().getArena(player);
-                arena.start();
-            } else if (slot == 6) { // op simulate player join for queue test
-                Arena arena = main.getArenaManager().getArena(player);
-                arena.simulatePlayerJoinForQueue(player);
-             } else {
+            Action action = e.getAction();
+            // only listening for right click
+            if (action == Action.RIGHT_CLICK_BLOCK || action == Action.RIGHT_CLICK_AIR) {
+                int slot = player.getInventory().getHeldItemSlot();
 
-                FileConfiguration config = main.getConfig();
-                String path = "bedwars-maps." + slot + ".name";
-                if (config.contains(path)) {
-                    main.getArenaManager().getArena(player).mapVote(player, slot);
-                }
-                e.setCancelled(true);
+                if (slot == 0) {
+                    //open map vote inventory
+                    MapVoteInventory mapVoteInventory = new MapVoteInventory(main);
+                    player.openInventory(mapVoteInventory.getMapVoteInventory(player));
+                } else if (slot == 8) {
+                    // player leave the game (compass)
+                    player.sendTitle("", "");
+                    ByteArrayDataOutput out = ByteStreams.newDataOutput();
+                    out.writeUTF("Connect");
+                    out.writeUTF("Lobby");
+                    player.sendPluginMessage(main, "BungeeCord", out.toByteArray());
+                } else if (slot == 7) { // op start the game
+                    if (player.isOp()) {
+                        Arena arena = main.getArenaManager().getArena(player);
+                        arena.start();
+                    }
+                } else if (slot == 6) { // op simulate player join for queue test
+                    if (player.isOp()) {
+                        Arena arena = main.getArenaManager().getArena(player);
+                        arena.simulatePlayerJoinForQueue(player);
+                    }
+                } //else {
+                   // main.getArenaManager().getArena(player).mapVote(player, slot);
+                    // Event setCancelled is already used in the blockplace event.
+                    // e.setCancelled(true);
+                //}
             }
-
         }
     }
 
     @EventHandler
-    public void onTarget(EntityTargetEvent e) {
-        if (e.getEntity() instanceof IronGolem) {
-         //   System.out.println("iron golem targeted something");
-            if (e.getTarget() instanceof Player) {
-              //  System.out.println("targeted a player");
-                Player player = (Player) e.getTarget();
-                Arena arena = main.getArenaManager().getArena(player);
-                Team team = arena.getTeam(player.getUniqueId());
-                if (arena.golemConfirmTarget((CraftIronGolem) e.getEntity(), team)) {
-                  //  System.out.println("player on other team, target confirmed");
-                } else {
-                   // System.out.println("player on same team as golem, target cancelled");
-                    e.setCancelled(true);
-                }
-            }
+    public void onCollect(PlayerPickupItemEvent e) {
+        Player player = e.getPlayer();
+        Arena arena = main.getArenaManager().getFirstArena();
+        if (arena.IsPlayerOutOfGame(player.getUniqueId())) {
+            e.setCancelled(true);
         }
-        if (e.getEntity() instanceof Silverfish) {
-            //   System.out.println("iron golem targeted something");
+    }
+
+    // i dont think this is ever fired,  golem & silverfish targets are set manulally.
+    @EventHandler
+    public void onTarget(EntityTargetEvent e) {
+        System.out.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX entity target event fired");
+        if (e.getEntity() instanceof IronGolem) {
             if (e.getTarget() instanceof Player) {
-                //  System.out.println("targeted a player");
                 Player player = (Player) e.getTarget();
                 Arena arena = main.getArenaManager().getArena(player);
-                Team team = arena.getTeam(player.getUniqueId());
-                if (team != null) {
-                    if (arena.silverfishConfirmTarget((CraftSilverfish) e.getEntity(), team)) {
+                if (arena.IsPlayerOutOfGame(player.getUniqueId())) {
+                    e.setCancelled(true);
+                } else {
+                    Team team = arena.getTeam(player.getUniqueId());
+                    if (arena.golemConfirmTarget((CraftIronGolem) e.getEntity(), team)) {
                         //  System.out.println("player on other team, target confirmed");
                     } else {
                         // System.out.println("player on same team as golem, target cancelled");
                         e.setCancelled(true);
                     }
                 }
+            } else {
+                System.out.println("Golem targeted non player");
+                e.setCancelled(true);
+            }
+        }
+        if (e.getEntity() instanceof Silverfish) {
+            if (e.getTarget() instanceof Player) {
+                Player player = (Player) e.getTarget();
+                Arena arena = main.getArenaManager().getArena(player);
+                if (arena.IsPlayerOutOfGame(player.getUniqueId())) {
+                    e.setCancelled(true);
+                } else {
+                    Team team = arena.getTeam(player.getUniqueId());
+                    if (team != null) {
+                        if (arena.silverfishConfirmTarget((CraftSilverfish) e.getEntity(), team)) {
+                            //  System.out.println("player on other team, target confirmed");
+                        } else {
+                            // System.out.println("player on same team as golem, target cancelled");
+                            e.setCancelled(true);
+                        }
+                    }
+                }
+            }
+            else {
+                e.setCancelled(true);
             }
         }
     }
+
+    @EventHandler(priority= EventPriority.HIGHEST)
+    public void onWeatherChange(WeatherChangeEvent event) {
+
+        boolean rain = event.toWeatherState();
+        if(rain)
+            event.setCancelled(true);
+    }
+
+    @EventHandler(priority=EventPriority.HIGHEST)
+    public void onThunderChange(ThunderChangeEvent event) {
+
+        boolean storm = event.toThunderState();
+        if(storm)
+            event.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onMove(PlayerMoveEvent e) {
+        Player player = e.getPlayer();
+        Arena arena = main.getArenaManager().getFirstArena();
+        if (arena.IsPlayerOutOfGame(player.getUniqueId())) {
+            if (e.getTo().getY() < (arena.GetFloorY() + 20)) {
+                Location location = player.getLocation();
+                location.add(0, 1, 0);
+                player.teleport(location);
+                player.setFlying(true);
+            }
+        }
+    }
+
+   /* @EventHandler
+    public void onPickup(PlayerPickupItemEvent event) {
+        if (event.getItem().getItemStack().getType().equals(Material.IRON_INGOT) ||
+                event.getItem().getItemStack().getType().equals(Material.GOLD_INGOT)  ||
+                event.getItem().getItemStack().getType().equals(Material.DIAMOND)  ||
+                event.getItem().getItemStack().getType().equals(Material.EMERALD)  ) {
+
+            ItemStack stack  = event.getItem().getItemStack();
+
+            stack.
+
+            System.out.println("picekd up " + event.getItem().getUniqueId().toString());
+        }
+    }*/
 
 }

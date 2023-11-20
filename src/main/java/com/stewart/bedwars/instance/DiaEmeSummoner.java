@@ -2,6 +2,7 @@ package com.stewart.bedwars.instance;
 
 import com.stewart.bedwars.Bedwars;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -119,19 +120,19 @@ public class DiaEmeSummoner {
         // check if it is time to upgrade the diamond summoners
         if (diaUpgraded == false && currentGameSeconds > diaUpgradeSeconds) {
             upgradeDiamondSummoners();
-            arena.sendMessage("Diamond summoners upgraded!");
+            arena.sendMessage(ChatColor.BLUE + "Diamond summoners upgraded!");
         }
         // check if it is time to start the diamond summoners
         if (currentGameSeconds == diaStartSeconds) {
-            System.out.println("cgs " + currentGameSeconds + " // diastartseconds " + diaStartSeconds);
-            arena.sendMessage("Diamond summoners started!");
+         //   System.out.println("cgs " + currentGameSeconds + " // diastartseconds " + diaStartSeconds);
+            arena.sendMessage(ChatColor.BLUE + "Diamond summoners started!");
         }
         // if it's after the diamond start time send a tick to the summoner item
         // the summoner item class will decide if it an item should be summoned or not
         // as it stores whe one was last dropped
         if (currentGameSeconds > diaStartSeconds) {
             for (SummonerItem item : diaSummonerItems) {
-                item.onTick(currentGameSeconds);
+                item.onTick(currentGameSeconds, false);
             }
         } else {
             // still want to countdown armourstand till start
@@ -142,15 +143,15 @@ public class DiaEmeSummoner {
         // same as above 3 checks but for emeralds
         if (emeUpgraded == false && currentGameSeconds > emeUpgradeSeconds) {
                 upgradeEmeraldSummoners();
-                arena.sendMessage("Emerald summoners upgraded!");
+                arena.sendMessage(ChatColor.GREEN + "Emerald summoners upgraded!");
             }
         if (currentGameSeconds == emeStartSeconds) {
-            System.out.println("cgs " + currentGameSeconds + " // emeStartSeconds " + emeStartSeconds);
-            arena.sendMessage("Emerald summoners started!");
+        //    System.out.println("cgs " + currentGameSeconds + " // emeStartSeconds " + emeStartSeconds);
+            arena.sendMessage(ChatColor.GREEN + "Emerald summoners started!");
         }
         if (currentGameSeconds > emeStartSeconds) {
             for (SummonerItem item : emeSummonerItems) {
-                item.onTick(currentGameSeconds);
+                item.onTick(currentGameSeconds, false);
             }
         } else {
             // still want to countdown armourstand till start

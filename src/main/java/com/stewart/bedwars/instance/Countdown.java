@@ -12,7 +12,7 @@ public class Countdown extends BukkitRunnable {
     private Arena arena;
     private int countdownSeconds;
     // this is the minimum it can go down to through people joining & the start of bigger player messages.
-    private int finalSeconds = 30;
+    private int finalSeconds = 15;
     private boolean isRunning;
 
     // the countdown class for the lobby, should be fairy self explanatory,
@@ -62,6 +62,7 @@ public class Countdown extends BukkitRunnable {
         if (countdownSeconds == 0) {
             cancel();
             arena.start();
+            arena.playGameStartSounds();
             return;
         }
 
@@ -70,6 +71,7 @@ public class Countdown extends BukkitRunnable {
             if (countdownSeconds == 30 || countdownSeconds == 20 || countdownSeconds == 15 || countdownSeconds == 10 ) {
                 arena.sendTitleSubtitle( countdownSeconds + " second" + (countdownSeconds ==1 ? "." : "s."),
                          "until game starts", "9", "5");
+                arena.playSoundAllPlayers(countdownSeconds);
             }
         } else {
             boolean isDivisibleBy10 = countdownSeconds % 10 == 0;
@@ -83,7 +85,10 @@ public class Countdown extends BukkitRunnable {
         if (countdownSeconds <= 5 && countdownSeconds > 0) {
             arena.sendMessage(ChatColor.GREEN + "Game will start in " + countdownSeconds + " second" + (countdownSeconds ==1 ? "." : "s."));
             arena.sendTitleSubtitle(String.valueOf(countdownSeconds), "", String.valueOf(countdownSeconds), null);
+            arena.playSoundAllPlayers(countdownSeconds);
         }
+
+
         countdownSeconds --;
     }
 }

@@ -75,14 +75,14 @@ public final class Bedwars extends JavaPlugin {
                         Arena arena = arenaManager.getFirstArena();
                         arena.updateLobby();
                     }
-
+                    if (arrReceived[1].equals("set-team-size")) {
+                        Arena arena = arenaManager.getFirstArena();
+                        arena.setTeamSize(Integer.parseInt(arrReceived[2]));
+                        arena.updateLobby();
+                    }
                 } else {
                     System.out.println("Received message is null");
                 }
-
-                // Pass the message to the Game class which handles keeping track of server statuses
-
-                // if the message
 
             } catch (Exception ex) {
                 System.out.println("Sock exchange received message error");

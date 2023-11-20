@@ -14,6 +14,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftEntity;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftIronGolem;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftSilverfish;
 import org.bukkit.entity.*;
@@ -65,6 +66,8 @@ public class Team {
     // team golems
     private List<CraftIronGolem> teamGolems;
     private List<CraftSilverfish> teamSilverfish;
+
+    private boolean doubleSummonerItems = false;
 
     // constructor takes main class, arenat the team is in, the team index (used to create the team from the config)
     // and the world the arena uses.
@@ -154,7 +157,7 @@ public class Team {
             List<SummonerItem> teamSummonerItems = summoner.getSummonerItems();
             // loop trough them all and and fire their tick() function, that will find out if they need to drop or not
             for (SummonerItem teamSummonerItem : teamSummonerItems) {
-                teamSummonerItem.onTick(gameSeconds);
+                teamSummonerItem.onTick(gameSeconds, doubleSummonerItems);
             }
             // if the team has players, update the game time on their scoreboard
             if (players.size() > 0) {
@@ -199,14 +202,14 @@ public class Team {
         for (CraftIronGolem golem : teamGolems) {
             if (golem.getTarget() == player) {
                 golem.setTarget(null);
-                System.out.println("golem untargeting player");
+              //  System.out.println("golem untargeting player");
             }
         }
         // check golem target
         for (CraftSilverfish silverfish : teamSilverfish) {
             if (silverfish.getTarget() == player) {
                 silverfish.setTarget(null);
-                System.out.println("silverfish untargeting player");
+               // System.out.println("silverfish untargeting player");
             }
         }
     }
@@ -260,15 +263,15 @@ public class Team {
     // send a message to all players in this team
     public void sendMessage(String message) {
         for (UUID uuid : players) {
-            Bukkit.getPlayer(uuid).sendMessage(ChatUtils.arenaChatPrefix + ChatColor.WHITE + message);
+            Bukkit.getPlayer(uuid).sendMessage(ChatUtils.arenaChatPrefix  + message);
         }
     }
 
     // checks if the player is in this team.  Used when adding players to
     // teams to make sure they are not already in a team
-    public boolean playerInTeam(UUID player) {
+    public boolean playerInTeam(UUID toFind) {
         for (UUID uuid : players) {
-            if (uuid == player) {
+            if (uuid.equals(toFind)) {
                 return true;
             }
         }
@@ -303,8 +306,12 @@ public class Team {
     public  void addPlayer(UUID uuid) {
         players.add(uuid);
         Player player = Bukkit.getPlayer(uuid);
+        String n = player.getDisplayName();
         playerKills.put(uuid, 0);
-        player.setDisplayName(colourPrefix + player.getDisplayName());
+      //  player.setDisplayName(colourPrefix + n);
+        player.setDisplayName(GameUtils.getChatColorFromString(this.teamColorString) + n);
+        player.setPlayerListName(GameUtils.getChatColorFromString(this.teamColorString) + n);
+
     }
 
     // credit a kill to the passed player
@@ -435,10 +442,11 @@ public class Team {
     public void updateScoreBoard() {
         for (UUID uuid : players) {
             Player player = Bukkit.getPlayer(uuid);
-            player.getScoreboard().getTeam("sbTeams1").setPrefix(arena.scoreBoardTeams(0));
-            player.getScoreboard().getTeam("sbTeams1").setSuffix(arena.scoreBoardTeams(4));
-            player.getScoreboard().getTeam("sbTeams2").setPrefix(arena.scoreBoardTeams(8));
-            player.getScoreboard().getTeam("sbTeams2").setSuffix(arena.scoreBoardTeams(12));
+            // team part handled in arean as not team specific
+          //  player.getScoreboard().getTeam("sbTeams1").setPrefix(arena.scoreBoardTeams(0));
+          //  player.getScoreboard().getTeam("sbTeams1").setSuffix(arena.scoreBoardTeams(4));
+           // player.getScoreboard().getTeam("sbTeams2").setPrefix(arena.scoreBoardTeams(8));
+           // player.getScoreboard().getTeam("sbTeams2").setSuffix(arena.scoreBoardTeams(12));
             player.getScoreboard().getTeam("sbTeamsBed").setSuffix(getBedStatus());
         }
     }
@@ -446,12 +454,19 @@ public class Team {
     // set this teams bed variable to broken.
     public void setBedBroken() {
         this.hasBed = false;
-        sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "Your bed has been broken!");
+        sendMessage(ChatColor.RED + "Your bed has been broken!");
         main.getArenaManager().getFirstArena().sendMessage(teamName + " team bed broken!");
     }
 
     // teleport passed player to team spawn
     public void teleportPlayerToSpawn(Player player) {
+        // if team has speed give it to the player
+        if (this.getTeamSpeed() == 1) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200000, 0));
+        }
+        if (this.getTeamSpeed() == 2) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200000, 1));
+        }
         if (GameUtils.isChunkLoaded(worldName, spawnLocation)) {
             teleportToSpawn(player);
         } else {
@@ -497,7 +512,7 @@ public class Team {
             Bukkit.getPlayer(uuid).addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200000, 0));
         }
         this.teamSpeed = 1;
-        sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GOLD + " This team now has speed-1!");
+        sendMessage(ChatColor.GOLD + " This team now has speed-1!");
     }
 
     // apply second team speed upgrade
@@ -507,7 +522,7 @@ public class Team {
             Bukkit.getPlayer(uuid).addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 200000, 1));
         }
         this.teamSpeed = 2;
-        sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GOLD + " This team now has speed-2!");
+        sendMessage(ChatColor.GOLD + " This team now has speed-2!");
     }
 
     // get current team speed
@@ -564,11 +579,14 @@ public class Team {
         // secondary target is the closest attack-able player target (cancel if same team in listener)
     //    golem.targetSelector.a(1, new PathfinderGoalNearestAttackableTarget(golem, EntityHuman.class,  true));
 
+
         golem.setCustomNameVisible(true);
         golem.setCustomName(playerName + "'s golem");
 
         teamGolems.add(craftGolem);
     }
+
+    public void setDoubleSummonerItems(boolean doubleSummonerItems) {this.doubleSummonerItems = doubleSummonerItems;}
 
     public void spawnTeamSilverfish(Location location, String playerName) {
         final CraftSilverfish craftSilverfish = (CraftSilverfish) Bukkit.getWorld("world").spawnEntity(location, EntityType.SILVERFISH);

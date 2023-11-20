@@ -15,13 +15,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.LeatherArmorMeta;
-import org.bukkit.material.Wool;
 import org.bukkit.util.Vector;
-
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
 
 // some random useful functions
 
@@ -280,24 +274,24 @@ public class GameUtils {
     public static void makePlayerArmourUnbreakable(Player player) {
         ItemStack is = player.getInventory().getChestplate();
         makeItemUnbreakable(is);
-        System.out.println("is now unbreakable " + player.getInventory().getChestplate().getItemMeta().spigot().isUnbreakable());
+     //   System.out.println("is now unbreakable " + player.getInventory().getChestplate().getItemMeta().spigot().isUnbreakable());
 
         ItemStack is2 = player.getInventory().getBoots();
         makeItemUnbreakable(is2);
-        System.out.println("getBoots is now unbreakable " + player.getInventory().getBoots().getItemMeta().spigot().isUnbreakable());
+     //   System.out.println("getBoots is now unbreakable " + player.getInventory().getBoots().getItemMeta().spigot().isUnbreakable());
 
         ItemStack is3 = player.getInventory().getHelmet();
         makeItemUnbreakable(is3);
-        System.out.println("getHelmet is now unbreakable " + player.getInventory().getHelmet().getItemMeta().spigot().isUnbreakable());
+     //   System.out.println("getHelmet is now unbreakable " + player.getInventory().getHelmet().getItemMeta().spigot().isUnbreakable());
 
         ItemStack is4 = player.getInventory().getLeggings();
         makeItemUnbreakable(is4);
-        System.out.println("getLeggings is now unbreakable " + player.getInventory().getLeggings().getItemMeta().spigot().isUnbreakable());
+     //   System.out.println("getLeggings is now unbreakable " + player.getInventory().getLeggings().getItemMeta().spigot().isUnbreakable());
     }
 
     private static void makeItemUnbreakable(ItemStack itemStack) {
         if (itemStack != null) {
-            System.out.println("is unbreakable " + itemStack.getItemMeta().spigot().isUnbreakable());
+       //     System.out.println("is unbreakable " + itemStack.getItemMeta().spigot().isUnbreakable());
             ItemMeta meta = itemStack.getItemMeta();
             meta.spigot().setUnbreakable(true);
             itemStack.setItemMeta(meta);
@@ -378,7 +372,15 @@ public class GameUtils {
         }
     }
 
-
+    public static void makePlayerInvisibleGameEnd(Player player) {
+        for (Player p : Bukkit.getServer().getOnlinePlayers()) {
+            if (p != player)
+                p.hidePlayer(player);
+        }
+        player.setAllowFlight(true);
+        player.setFlying(true);
+        player.getInventory().clear();
+    }
 
 }
 
