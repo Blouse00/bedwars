@@ -7,12 +7,8 @@ import com.stewart.bedwars.GameState;
 import com.stewart.bedwars.instance.Arena;
 import com.stewart.bedwars.team.Team;
 import com.stewart.bedwars.utils.*;
-import net.minecraft.server.v1_8_R3.EntityIronGolem;
-import net.minecraft.server.v1_8_R3.NBTTagCompound;
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.craftbukkit.v1_8_R3.entity.CraftEntity;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftIronGolem;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftSilverfish;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftTNTPrimed;
@@ -22,7 +18,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.*;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
@@ -278,6 +273,16 @@ public class GameListener implements Listener {
     }
 
     @EventHandler
+    public void NoPearlDamage(PlayerTeleportEvent event){
+        Player p = event.getPlayer();
+        if(event.getCause() == PlayerTeleportEvent.TeleportCause.ENDER_PEARL){
+            event.setCancelled(true);
+            p.setNoDamageTicks(1);
+            p.teleport(event.getTo());
+        }
+    }
+
+    @EventHandler
     public void onPlace(BlockPlaceEvent event){
 
         Arena arena = main.getArenaManager().getFirstArena();
@@ -342,6 +347,8 @@ public class GameListener implements Listener {
                     Bukkit.getWorld(locworld).playSound(locsound, Sound.ENDERDRAGON_GROWL, 100, (float) 1);
                     // call the bed broken arena function that will handle the game end check etc.
                     arena.teamBedBroken(bedBlock1.getLocation(), bedBlock2.getLocation());
+                    // log broken bed for the player
+                    main.getBb_api().getPlayerManager().increaseValueByOne(player.getUniqueId(), "bw_beds");
                 }
             }
         }
@@ -459,6 +466,14 @@ public class GameListener implements Listener {
 
     @EventHandler
     public void onSleepTry(PlayerBedEnterEvent sleepevent) { sleepevent.setCancelled(true); }
+
+    @EventHandler
+    public void onPickupItem(PlayerPickupItemEvent event) {
+        if (event.getItem().getItemStack().equals(new ItemStack(Material.EMERALD)) ||
+                event.getItem().getItemStack().equals(new ItemStack(Material.DIAMOND))) {
+            main.getArenaManager().getFirstArena().ifNewPlayerNotSeenDiaEmHelpMessage(event.getPlayer());
+        }
+    }
 
     // when a player places a block on a bed
     @EventHandler
@@ -764,34 +779,42 @@ public class GameListener implements Listener {
                         //BLOCK TRAPS
                         player.openInventory(shop.getBlockTrapShop(player));
                         break;
-                    case 37:
+                    case 28:
                         // STONE SWORD
                         shop.BuyStoneSword(player);
                         break;
-                    case 38:
+                    case 37:
                         //IRON SWORD;
                         shop.BuyIronSword(player);
                         break;
-                    case 39:
+                    case 38:
                         // WOOL BLOCKS
                         int teamColorInt2 = main.getArenaManager().getArena(player).getTeam(player.getUniqueId()).getTeamColorInt();
                         shop.BuyWoolBlock(player, teamColorInt2);
                         break;
-                    case 40:
+                    case 39:
                         // STONE PICK
                         shop.BuyStonePick(player);
                         break;
-                    case 41:
+                    case 40:
                         // BOW
                         shop.BuyBow(player);
                         break;
-                    case 42:
+                    case 41:
                         // ARROWS
                         shop.BuyArrows(player);
                         break;
-                    case 43:
+                    case 42:
                         // GAPPLE
                         shop.BuyGapple(player, "armoury.island-gapple");
+                        break;
+                    case 43:
+                        // MILK
+                        shop.BuyMilk(player);
+                        break;
+                    case 34:
+                        // PEARL
+                        shop.BuyPearl(player);
                         break;
                     default:
                         return;
@@ -1124,19 +1147,6 @@ public class GameListener implements Listener {
         }
     }
 
-   /* @EventHandler
-    public void onPickup(PlayerPickupItemEvent event) {
-        if (event.getItem().getItemStack().getType().equals(Material.IRON_INGOT) ||
-                event.getItem().getItemStack().getType().equals(Material.GOLD_INGOT)  ||
-                event.getItem().getItemStack().getType().equals(Material.DIAMOND)  ||
-                event.getItem().getItemStack().getType().equals(Material.EMERALD)  ) {
 
-            ItemStack stack  = event.getItem().getItemStack();
-
-            stack.
-
-            System.out.println("picekd up " + event.getItem().getUniqueId().toString());
-        }
-    }*/
 
 }

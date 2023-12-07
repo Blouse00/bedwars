@@ -4,7 +4,6 @@ import com.stewart.bedwars.Bedwars;
 import com.stewart.bedwars.instance.Arena;
 import com.stewart.bedwars.instance.Summoner;
 import com.stewart.bedwars.instance.SummonerItem;
-import com.stewart.bedwars.manager.ConfigManager;
 import com.stewart.bedwars.utils.ChatUtils;
 import com.stewart.bedwars.utils.GameUtils;
 import net.minecraft.server.v1_8_R3.*;
@@ -14,7 +13,6 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.craftbukkit.v1_8_R3.entity.CraftEntity;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftIronGolem;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftSilverfish;
 import org.bukkit.entity.*;
@@ -38,8 +36,8 @@ import java.util.UUID;
 // empty teams are removed when the game starts.
 public class Team {
     private int ID;
-    private String teamName;
-    private Bedwars main;
+    private final String teamName;
+    private final Bedwars main;
     private Location spawnLocation;
     // the team summoner class instance
     private List<Summoner> summoners;
@@ -59,7 +57,7 @@ public class Team {
     private boolean diamondSummonerActive;
     private boolean finalSummonerActive;
     // scoreboard is set in per team as it needs to show your team bed status
-    private Scoreboard scoreboard;
+  //  private Scoreboard scoreboard;
     private Arena arena;
     // stores how many kills each player in the team has for use in the scoreboard
     private HashMap<UUID, Integer> playerKills;
@@ -97,7 +95,7 @@ public class Team {
         this.teamColorInt  = config.getInt("teams." + index + ".color-short");
         this.teamColorString  = config.getString("teams." + index + ".enum");
         // initialise the team scoreboard
-        this.scoreboard =  Bukkit.getScoreboardManager().getNewScoreboard();
+       // this.scoreboard =  Bukkit.getScoreboardManager().getNewScoreboard();
     }
 
     // get location of named item for team with passed index with yaw and pitch.
@@ -159,10 +157,10 @@ public class Team {
             for (SummonerItem teamSummonerItem : teamSummonerItems) {
                 teamSummonerItem.onTick(gameSeconds, doubleSummonerItems);
             }
-            // if the team has players, update the game time on their scoreboard
+          /*  // if the team has players, update the game time on their scoreboard
             if (players.size() > 0) {
                 scoreboard.getTeam("sbTime").setSuffix(ChatColor.BLUE + arena.getGame().getGameTime());
-            }
+            }*/
             // check golem target
             for (CraftIronGolem golem : teamGolems) {
                 checkGolemTarget(golem);
@@ -321,20 +319,18 @@ public class Team {
         playerKills.put(uuid, score);
         // get th eplayer and update th ekills value n his scoreboard.
         Player player = Bukkit.getPlayer(uuid);
-        player.getScoreboard().getTeam("sbTeamsKills").setSuffix(String.valueOf(score));
+        player.getScoreboard().getTeam("sbKills").setSuffix(String.valueOf(score));
     }
 
     // remove a player from a team.  Happens when they die without a bed to respawn in.
     // retunrs true false to indicate if the team is now empty or not.
-    public  boolean removePlayer(UUID uuid) {
+    public void removePlayer(UUID uuid) {
         int cntBefore = players.size();
         players.remove(uuid);
         int cntAfter = players.size();
         if (cntBefore == 1 && cntAfter == 0) {
             // removing this player emptied this team
-            return true;
         }
-        return false;
     }
 
     // remove a player from a team.  Happens when they die without a bed to respawn in.
@@ -364,22 +360,27 @@ public class Team {
         }
     }
 
+    public void setScoreboardTeamName() {
+            for (UUID uuid:players) {
+                Player player = Bukkit.getPlayer(uuid);
+            player.getScoreboard().getTeam("sbTeamName").setPrefix(ChatColor.GREEN + "Team: ");
+            player.getScoreboard().getTeam("sbTeamName").setSuffix(getTeamChatColor() + teamName);
+        }
+    }
+
     // Creates the team scoreboard
-    public void setScoreboard() {
+  /*  public void setScoreboard() {
         if (players.size() > 0) {
             // create the scoreboard - see udemy tutorial for more details
             Objective obj = scoreboard.registerNewObjective("bwboard", "dummy");
             obj.setDisplaySlot(DisplaySlot.SIDEBAR);
             obj.setDisplayName(ChatColor.BOLD.toString() + ChatColor.GOLD + "BedWars");
 
-            // teams in scroeboards are not like the teams we use, they seem to be used to denote a part of the scoreboard
-            // that can be updated from another function (eg player kills, bed destroyed)
-
-            // this is where the game time is shown and will be updated every second.
+             // this is where the game time is shown and will be updated every second.
             org.bukkit.scoreboard.Team sbTime = scoreboard.registerNewTeam("sbTime");
             sbTime.addEntry(ChatColor.BOLD.toString());
-            sbTime.setPrefix("Time elapsed: ");
-            sbTime.setSuffix(ChatColor.BLUE + arena.getGame().getGameTime());
+            sbTime.setPrefix(" ");
+            sbTime.setSuffix(" ");
             obj.getScore(ChatColor.BOLD.toString()).setScore(14);
 
             // empty line
@@ -436,7 +437,7 @@ public class Team {
                 Bukkit.getPlayer(uuid).setScoreboard(scoreboard);
             }
         }
-    }
+    }*/
 
     // update all players scoreboards when a team is eliminated or a bed is destroyed.
     public void updateScoreBoard() {
@@ -447,7 +448,7 @@ public class Team {
           //  player.getScoreboard().getTeam("sbTeams1").setSuffix(arena.scoreBoardTeams(4));
            // player.getScoreboard().getTeam("sbTeams2").setPrefix(arena.scoreBoardTeams(8));
            // player.getScoreboard().getTeam("sbTeams2").setSuffix(arena.scoreBoardTeams(12));
-            player.getScoreboard().getTeam("sbTeamsBed").setSuffix(getBedStatus());
+            player.getScoreboard().getTeam("sbBedStatus").setSuffix(getBedStatus());
         }
     }
 
@@ -495,6 +496,12 @@ public class Team {
         for(UUID uuid : players) {
             // win fireworks is in the GameUtils class
             GameUtils.winFireworks(Bukkit.getPlayer(uuid), main);
+        }
+    }
+
+    public void logWinInApi() {
+        for (UUID uuid:players) {
+            main.getBb_api().getPlayerManager().increaseValueByOne(uuid, "bw_wins");
         }
     }
 

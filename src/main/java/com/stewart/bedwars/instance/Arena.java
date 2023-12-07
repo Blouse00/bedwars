@@ -23,13 +23,19 @@ import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftSilverfish;
 import org.bukkit.entity.*;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Item;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scoreboard.DisplaySlot;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Score;
+import org.bukkit.scoreboard.Scoreboard;
+
 import org.bukkit.util.Vector;
+import org.stewart.bb_api.instance.GameInfo;
+import org.stewart.bb_api.manager.LeaderboardManager;
 
 import java.io.File;
 import java.util.*;
@@ -37,40 +43,46 @@ import java.util.stream.Collectors;
 
 public class Arena {
 
-    private Bedwars main;
+    private final Bedwars main;
     private int ID;
 
-    private Location spawn;
+    private final Location spawn;
     private Location spectatorSpawn;
-    private FileConfiguration config;
+    private final FileConfiguration config;
     private int teamSize;
 
     private GameState state;
-    private List<UUID> players;
-    private List<UUID> outOfGamePlayers;
+    private final List<UUID> players;
+    private final List<UUID> outOfGamePlayers;
     private Countdown countdown;
     private PlayersRequiredRunnable playersRequiredRunnable;
     private GameClock gameClock;
-    private List<Team> teams = new ArrayList<>();
+    private final List<Team> teams = new ArrayList<>();
     private HashMap<UUID, UUID> playerDamage = new HashMap<>();
-    private HashMap<UUID, Integer> mapVotes = new HashMap<>();
+    private final HashMap<UUID, Integer> mapVotes = new HashMap<>();
     private DiaEmeSummoner diaEmeSummoners;
     private ShopManager shopManager;
-    private String worldName;
-    private Game game;
+    private final String worldName;
+    private final Game game;
     private int maxPlayers;
-    private World world;
+    private final World world;
     private List<Block> playerBlocks = new ArrayList<>();
     private BorderCheck borderCheck;
     private int floorY;
+    private final List<UUID> lstNewPlayers;
+    private final List<UUID> lstPityPlayers;
+    private final List<UUID> lstPlayersSeenDiaEmHelpMessage;
+    private final GameInfo gameInfo;
 
     // Most of the game code is split between this class and the 'Game' class.  I could have
     // just had it all in this one just as easily.
     // this is created once when the server starts not at the beginning of each game.
     public Arena(Bedwars main, String worldName, String ID) {
-
         // this arenas ID, will only be one for this game but may be more in others.
         this.ID = Integer.parseInt(ID);
+        this.lstNewPlayers = new ArrayList<>();
+        this.lstPityPlayers = new ArrayList<>();
+        this.lstPlayersSeenDiaEmHelpMessage = new ArrayList<>();
         // the world name, I'm not using multiple arenas at the moment but having this will help when if I do.
         this.worldName = worldName;
         // set team size to 0, will be updated when the first player joins
@@ -91,6 +103,7 @@ public class Arena {
         // read the gameID and server ID from config, this is used for updating the hub server (sign) with information
         // about the servers game state & number of players.
         this.config = main.getConfig();
+        this.gameInfo = main.getBb_api().getGameInfo("bedwars");
         // the spawn location for players entering the lobby
         world = new WorldCreator(worldName).createWorld();
         spawn = new Location(
@@ -100,6 +113,19 @@ public class Arena {
                 config.getDouble("lobby-spawn.z"),
                 (float) config.getDouble("lobby-spawn.yaw"),
                 (float) config.getDouble("lobby-spawn.pitch"));
+        setupLeaderboard();
+    }
+
+    public void sendMessageNewPlayers(String message) {
+        for (UUID uuid: lstNewPlayers) {
+            Bukkit.getPlayer(uuid).sendMessage(ChatUtils.arenaChatPrefix + "" + ChatColor.GREEN + message);
+        }
+    }
+
+    public void sendMessagePityPlayers(String message) {
+        for (UUID uuid: lstPityPlayers) {
+            Bukkit.getPlayer(uuid).sendMessage(ChatUtils.arenaChatPrefix + "" + ChatColor.GREEN + message);
+        }
     }
 
     public void mapVote(Player player, Integer slotInt) {
@@ -123,8 +149,8 @@ public class Arena {
     // fired to start the game, either when countdown completes or the command is entered.
     public void start() {
         System.out.println("Game starting");
-        // clears up any dropped items left in the map
-       // removeEntityItems();
+        // turn off the server messages in the api
+        main.getBb_api().getMessageManager().toggleMessageSending(false);
         // this will be decided by voting at this point eventually
         String configName = getArenaConfigName();
         File file = new File(main.getDataFolder(), configName);
@@ -169,14 +195,45 @@ public class Arena {
         gameClock.start();
         // starts the game class, (sets the game start to live)
         game.start();
-        // scoreboards are mostly handled per team.
+        // set the teams part of the scoreboard.
+        updateTeamsScoreboard();
+        // set team name in each players scoreboard
         for (Team team : teams) {
-            team.setScoreboard();
+            team.setScoreboardTeamName();
         }
+        addPityKit();
+        setScoreboardGameStart();
         sendTitleSubtitle("Fight!", "", null, null);
         // update the sign in the hub server
         updateLobby();
     }
+
+    private void addPityKit() {
+        // only if gameInfo (from the api) is not null)
+        if (gameInfo != null) {
+            // loop through pity players
+            for (UUID uuid : lstPityPlayers) {
+                Player player = Bukkit.getPlayer(uuid);
+                // Loop through pity items
+                for (Map.Entry<Material,Integer> pair : gameInfo.getPityKit().entrySet()){
+                    // add correct amount of item to player inventory;
+                    ItemStack stack = new ItemStack(pair.getKey(), pair.getValue());
+                    player.getInventory().addItem(stack);
+                }
+            }
+            // and the new players as they are separate
+            for (UUID uuid : lstNewPlayers) {
+                Player player = Bukkit.getPlayer(uuid);
+                // Loop through pity items
+                for (Map.Entry<Material,Integer> pair : gameInfo.getPityKit().entrySet()){
+                    // add correct amount of item to player inventory;
+                    ItemStack stack = new ItemStack(pair.getKey(), pair.getValue());
+                    player.getInventory().addItem(stack);
+                }
+            }
+        }
+    }
+
 
     //also called from game
     public void addHotbarNetherStar(Player player) {
@@ -338,6 +395,8 @@ public class Arena {
             checkPlayerWithinArena(player);
             // update compass target
             updateCompass(player);
+            player.getScoreboard().getTeam("sbTime").setSuffix(ChatColor.BLUE + getGame().getGameTime());
+
         }
 
         // fires the clock tick function in the game class so it can do stuff too.
@@ -364,7 +423,7 @@ public class Arena {
     // check if the player is outside the arena boundary
     public void checkPlayerWithinArena(Player player) {
         if (player != null) {
-            if (borderCheck.contains(player.getLocation(), true) == false) {
+            if (!borderCheck.contains(player.getLocation(), true)) {
                 // teleport the player back to spawn.
                 Team team = getTeam(player.getUniqueId());
                 if (team != null) {
@@ -436,6 +495,8 @@ public class Arena {
 
         } else {
             System.out.println("Game was countdown");
+            // turn server messages back on
+            main.getBb_api().getMessageManager().toggleMessageSending(true);
             // game in countdown state.
             sendTitleSubtitle("","", null, null);
             countdown.cancel();
@@ -524,6 +585,12 @@ public class Arena {
         }
     }
 
+    public void logGamePlayed() {
+        for (UUID uuid:players) {
+            main.getBb_api().getPlayerManager().increaseValueByOne(uuid, "bw_games");
+        }
+    }
+
     // fired when the game is won
     private void gameWon(Team winningTeam) {
         // game state finishing only lasts for about 3 seconds
@@ -533,7 +600,8 @@ public class Arena {
             gameClock.stop();
             gameClock = null;
         }
-
+        // log wins for each player in the team
+        winningTeam.logWinInApi();
         // show the fireworks
         winningTeam.showWinFireWorks();
         // chat message etc
@@ -547,7 +615,7 @@ public class Arena {
             public void run() {
                 reset();
             }
-        }.runTaskLater(main, 200);
+        }.runTaskLater(main, 300);
     }
 
     // fired when the game is a draw
@@ -589,14 +657,15 @@ public class Arena {
         netherStar.setItemMeta(netherStarMeta);
         player.getInventory().setItem(0,netherStar);
 
-      //  addMapVoteItems(player);
-        // add some estra stuff for OP
+        // add some extra stuff for OP
         if (player.isOp()) {
             addOPLobbyItems(player);
         }
         // add them to the arenas list of players
         players.add(player.getUniqueId());
         player.setGameMode(GameMode.SURVIVAL);
+
+        setPlayerScoreBoard(player);
 
         // Already checked for Live or finishing, can only be recruiting or countdown here
         // start the countdown if we now have the minimum number of players as defined in the config file
@@ -612,7 +681,7 @@ public class Arena {
             }
         } else {
             // COUNTDOWN state
-            if(players.size() <= maxPlayers) {
+            if(players.size() < maxPlayers) {
                 // not at max players yet
                 countdown.playerJoined();
             } else if (players.size() == maxPlayers) {
@@ -626,9 +695,9 @@ public class Arena {
         if (state == GameState.RECRUITING) {
             int minPlayers = ConfigManager.getRequiredPlayers(teamSize);
             int playersNeeded = (minPlayers - players.size());
-            sendMessage(ChatColor.AQUA + "****************************************");
+            sendMessage(ChatColor.AQUA + "**********************************************");
             sendMessage(ChatColor.GOLD + "Waiting for " +  playersNeeded + " more players to join");
-            sendMessage(ChatColor.AQUA + "****************************************");
+            sendMessage(ChatColor.AQUA + "**********************************************");
 
             if (playersRequiredRunnable != null) {
                 playersRequiredRunnable.cancel();
@@ -679,7 +748,8 @@ public class Arena {
         System.out.println("player left server uuid = " + uuid.toString());
         // remove the player from the arena player list
         players.remove(uuid);
-
+        lstNewPlayers.remove(player.getUniqueId());
+        lstPityPlayers.remove(player.getUniqueId());
         // remove the player form any team they may be in
         for (Team team : teams) {
             team.removePlayer(uuid);
@@ -835,7 +905,7 @@ public class Arena {
     // returns the lobby spawn location
     public Location getSpawn() {return spawn;}
 
-    // returns the specator spawn location
+    // returns the spectator spawn location
     public Location getSpectatorSpawn() {return spectatorSpawn;}
     public void addPlayerBlock(Block block) {
         if (block != null) {
@@ -854,18 +924,11 @@ public class Arena {
 
     // check if the block was placed by a player
     public boolean isPlayerBlock(Block block) {
-        if (playerBlocks.contains(block)) {
-            return true;
-        }
-        return false;
+        return playerBlocks.contains(block);
     }
 
     // returns the team instance for the given team name
-    // returns null if the team is not found
     public Team getTeam(String name) {
-        if (teams == null) {
-            return null;
-        }
         for (Team team : teams) {
             if (team.getTeamName().equalsIgnoreCase(name)) {
                 return team;
@@ -875,11 +938,7 @@ public class Arena {
     }
 
     // returns the team instance for the team that contains the passed player GUID
-    // returns null if not found
     public Team getTeam(UUID uuid) {
-        if (teams == null) {
-            return null;
-        }
         for (Team team : teams) {
             if (team.playerInTeam(uuid)) {
                 return team;
@@ -946,7 +1005,7 @@ public class Arena {
                 teamsWithPlayers.add(team);
             }
         }
-        if (teamsWithPlayers.size() == 0) {
+        if (teamsWithPlayers.isEmpty()) {
             // this should not happen but for debugging I'll check anyway.
             // i'll return the first team
             System.out.println("No teams with players when checking for winner.");
@@ -989,15 +1048,13 @@ public class Arena {
         for (Entity ps : entity.getNearbyEntities(10, 10, 10)) {
             if (ps instanceof Player) {
                 // todo check if ps is out of game, if so do not add them
-                if (IsPlayerOutOfGame(ps.getUniqueId()) == false) {
+                if (!IsPlayerOutOfGame(ps.getUniqueId())) {
                     pclose.add((Player) ps);
-                } else {
-                  //  System.out.println("potential golem target is out of game.");
                 }
             }
         }
         // if no players
-        if (pclose.size() == 0) {
+        if (pclose.isEmpty()) {
            // System.out.println("no players within 10 blocks of entity");
             return null;
         }
@@ -1007,13 +1064,11 @@ public class Arena {
             if(team.playerInTeam(player.getUniqueId())) {
               //  System.out.println("player " + player.getName() + " is on same team as entity");
                 sameTeamPlayer.add(player);
-            } else {
-              //  System.out.println("player " + player.getName() + " is NOT on same team as entity");
             }
         }
         pclose.removeAll(sameTeamPlayer);
         // if no players
-        if (pclose.size() == 0) {
+        if (pclose.isEmpty()) {
           //  System.out.println("no enemy players within 10 blocks of entity");
             return null;
         }
@@ -1040,8 +1095,8 @@ public class Arena {
     public String scoreBoardTeams(int startTeam) {
         int i = startTeam;
         // str is what is going to be returned
-        String str = "";
-        // loop will run 4 times unless interupted
+        StringBuilder str = new StringBuilder();
+        // loop will run 4 times unless interrupted
         while (i < startTeam + 4) {
             // max is the current iterated team taking into account the starting index
             // this could be the fist run of the loop but if the starting index was (for example) 8 (team 9 as 0 indexed)
@@ -1051,11 +1106,11 @@ public class Arena {
             if (getTeamsWithPlayers().size() >= max) {
                 // if there are still teams to return get the next one
                 Team team = getTeamsWithPlayers().get(i);
-                // add corss or square to the string depending on if the team has a bed or not
+                // add cross or square to the string depending on if the team has a bed or not
                 if (team.hasBed()){
-                    str += ChatUtils.sbSquare(team.getTeamChatColor());
+                    str.append(ChatUtils.sbSquare(team.getTeamChatColor()));
                 } else {
-                    str += ChatUtils.sbCross(team.getTeamChatColor());
+                    str.append(ChatUtils.sbCross(team.getTeamChatColor()));
                 }
             } else {
                 // break out of the loop - see comment above
@@ -1063,16 +1118,14 @@ public class Arena {
             }
             i++;
         }
-        return str;
+        return str.toString();
     }
 
     public void golemDied(CraftIronGolem golem) {
         for (Team team : teams) {
             if (team.golemInTeam(golem)) {
              //  System.out.println("Killed golem belonged to " + team.getTeamName() + " team!");
-               if  (team.removeGolem(golem)) {
-             //      System.out.println("golem removed");
-               } else {
+               if  (!team.removeGolem(golem)) {
                    System.out.println("team.removeGolem returned false.");
                }
             }
@@ -1082,10 +1135,7 @@ public class Arena {
     public void silverfishDied(CraftSilverfish silverfish) {
         for (Team team : teams) {
             if (team.silverFishInTeam(silverfish)) {
-            //    System.out.println("Killed silverfish belonged to " + team.getTeamName() + " team!");
-                if  (team.removeSilverfish(silverfish)) {
-              //      System.out.println("silverfish removed");
-                } else {
+                if  (!team.removeSilverfish(silverfish)) {
                     System.out.println("team.removesilverfish returned false.");
                 }
             }
@@ -1093,17 +1143,11 @@ public class Arena {
     }
 
     public boolean golemConfirmTarget(CraftIronGolem golem, Team targetTeam) {
-        if (targetTeam.golemInTeam(golem)) {
-            return false;
-        }
-        return true;
+        return !targetTeam.golemInTeam(golem);
     }
 
     public boolean silverfishConfirmTarget(CraftSilverfish silverfish, Team targetTeam) {
-        if (targetTeam.silverFishInTeam(silverfish)) {
-            return false;
-        }
-        return true;
+        return !targetTeam.silverFishInTeam(silverfish);
     }
 
     public void untargetPlayer(Player player) {
@@ -1169,7 +1213,7 @@ public class Arena {
 
     private void ResetTeamSizeIfNoPlayers() {
 
-        if (players.size() == 0) {
+        if (players.isEmpty()) {
             System.out.println("Resetting team size to 0 as no players.");
             this.teamSize = 0;
             this.maxPlayers = 10;
@@ -1192,6 +1236,173 @@ public class Arena {
         }
         return false;
     }
+
+    public void ifNewPlayerNotSeenDiaEmHelpMessage(Player player) {
+        // is new player & has not already seen the message
+        if (lstNewPlayers.contains(player.getUniqueId()) && !lstPlayersSeenDiaEmHelpMessage.contains(player.getUniqueId())) {
+            player.sendMessage(ChatUtils.arenaChatPrefix + "" +
+                    ChatColor.GREEN + "Diamonds & ems can be used for upgrades!  Right-click on a Blaze for upgrades.");
+            lstPlayersSeenDiaEmHelpMessage.add(player.getUniqueId());
+        }
+    }
+
+    private void setupLeaderboard() {
+        System.out.println("setupLeaderboard");
+        // get the leaderboard manager
+        LeaderboardManager leaderboardManager = main.getBb_api().getLeaderboardManager();
+
+        // I don't need the arena names for this game but the function does expect a list
+        // I'm only needing the num games + wins/games leaderboards
+        List<String> lstArenaNames = new ArrayList<>();
+
+        // load the leaderboards for each arena as well as the wins and ration leaderboards
+        leaderboardManager.loadGameLeaderboards(lstArenaNames, "bw");
+
+        // should be up to 5 depending on if enough games have been played to trigger wins/games
+        System.out.println("Leaderboards size " + leaderboardManager.getLeaderboardList().size());
+
+        // I don't want to show the kills or deaths leaderboards
+
+        // get the locations for leaderboards spawning from the config
+        List<Location> lstLeaderboardLocation = ConfigManager.getLeaderboardSpawns(world);
+
+        System.out.printf("Leaderboard spawn location size " +lstLeaderboardLocation.size());
+        // spawn the armour stand leaderboards
+        main.getBb_api().getLeaderboardManager().createHologramLeaderboards(lstLeaderboardLocation, 10);
+
+    }
+
+    private void setPlayerScoreBoard(Player player) {
+
+        int numGames = main.getBb_api().getGenericQueries().getIntValue("bb_players", "player_uuid", player.getUniqueId().toString(), "bw_games");
+        int numWins = main.getBb_api().getGenericQueries().getIntValue("bb_players", "player_uuid", player.getUniqueId().toString(), "bw_wins");
+
+        if (gameInfo != null) {
+            if (numGames < gameInfo.getNewPlayerNumGames()) {
+                lstNewPlayers.add(player.getUniqueId());
+            } else {
+                // they are not a new player
+                if (numGames > 0) {
+                    // can only use pity system if gameInfo is not null, numGames should be > 0 but ignoring the
+                    // player if that is the case
+                    // if no wins add to pity list
+                    if (numWins < 0) {
+                        lstPityPlayers.add(player.getUniqueId());
+                        System.out.println(player.getName() + " no wins adding to pity list");
+                    } else {
+                        // if the players win ratio is lower than defined in gameInfo add them to the pity list
+                        float pityRatio = gameInfo.getPityRatio() / 100F;
+                        float actualRatio = (float) (numWins/numGames);
+                        if (actualRatio <= pityRatio) {
+                            lstPityPlayers.add(player.getUniqueId());
+                            System.out.println(player.getName() + " win ratio is " + actualRatio +
+                                    " which is less than " + pityRatio + ", adding to pity list");
+                        }
+                    }
+                }
+
+            }
+        } else {
+            System.out.println("-----------------------------Game info is NULL -------------------------------");
+        }
+
+        int numKills = main.getBb_api().getGenericQueries().getIntValue("bb_players", "player_uuid", player.getUniqueId().toString(), "bw_kills");
+        int numBeds = main.getBb_api().getGenericQueries().getIntValue("bb_players", "player_uuid", player.getUniqueId().toString(), "bw_beds");
+
+        if (gameInfo != null) {
+
+        }
+
+
+        Scoreboard scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
+        Objective obj = scoreboard.registerNewObjective("ObjectiveRef1", "Useless");
+        obj.setDisplayName(ChatColor.GOLD.toString() + ChatColor.BOLD + "Bedwars");
+        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+        org.bukkit.scoreboard.Team sbTime = scoreboard.registerNewTeam("sbTime");
+        sbTime.addEntry(ChatColor.BOLD.toString());
+        sbTime.setPrefix(" ");
+        sbTime.setSuffix(" ");
+        obj.getScore(ChatColor.BOLD.toString()).setScore(11);
+
+        org.bukkit.scoreboard.Team sbEmpty1 = scoreboard.registerNewTeam("sbEmpty1");
+        sbEmpty1.addEntry(ChatColor.DARK_RED.toString());
+        sbEmpty1.setPrefix(ChatColor.GOLD + "Protect your");
+        sbEmpty1.setSuffix(ChatColor.GOLD + " bed");
+        obj.getScore(ChatColor.DARK_RED.toString()).setScore(10);
+
+        org.bukkit.scoreboard.Team sbTeamInfo = scoreboard.registerNewTeam("sbTeamInfo");
+        sbTeamInfo.addEntry(ChatColor.STRIKETHROUGH.toString());
+        sbTeamInfo.setPrefix(ChatColor.GOLD + "Destroy");
+        sbTeamInfo.setSuffix(ChatColor.GOLD + " others!");
+        obj.getScore(ChatColor.STRIKETHROUGH.toString()).setScore(9);
+
+        // check out the scoreBoardTeams() function in arena class for comments on how the next 2 bits work.
+        org.bukkit.scoreboard.Team sbTeams1 = scoreboard.registerNewTeam("sbTeams1");
+        sbTeams1.addEntry(ChatColor.GOLD.toString());
+        sbTeams1.setPrefix("  ");
+        sbTeams1.setSuffix("  ");
+        obj.getScore(ChatColor.GOLD.toString()).setScore(8);
+
+        org.bukkit.scoreboard.Team sbTeams2 = scoreboard.registerNewTeam("sbTeams2");
+        sbTeams2.addEntry(ChatColor.GRAY.toString());
+        sbTeams2.setPrefix(ChatColor.GREEN + "Games: ");
+        sbTeams2.setSuffix(ChatColor.BLUE + "" + numGames);
+        obj.getScore(ChatColor.GRAY.toString()).setScore(7);
+
+        org.bukkit.scoreboard.Team sbEmpty2 = scoreboard.registerNewTeam("sbEmpty2");
+        sbEmpty2.addEntry(ChatColor.YELLOW.toString());
+        sbEmpty2.setPrefix(ChatColor.GREEN + "Wins: ");
+        sbEmpty2.setSuffix(ChatColor.BLUE + "" + numWins);
+        obj.getScore(ChatColor.YELLOW.toString()).setScore(6);
+
+        org.bukkit.scoreboard.Team sbTeamName = scoreboard.registerNewTeam("sbTeamName");
+        sbTeamName.addEntry(ChatColor.GREEN.toString());
+        sbTeamName.setPrefix(ChatColor.GREEN + "Kills: ");
+        sbTeamName.setSuffix(ChatColor.BLUE + "" + numKills);
+        obj.getScore(ChatColor.GREEN.toString()).setScore(5);
+
+        org.bukkit.scoreboard.Team sbBedStatus = scoreboard.registerNewTeam("sbBedStatus");
+        sbBedStatus.addEntry(ChatColor.DARK_PURPLE.toString());
+        sbBedStatus.setPrefix(ChatColor.GREEN + "Beds broken: ");
+        sbBedStatus.setSuffix(ChatColor.BLUE + "" + numBeds);
+        obj.getScore(ChatColor.DARK_PURPLE.toString()).setScore(4);
+
+        org.bukkit.scoreboard.Team sbKills = scoreboard.registerNewTeam("sbKills");
+        sbKills.addEntry(ChatColor.AQUA.toString());
+        sbKills.setPrefix("   ");
+        sbKills.setSuffix("   ");
+        obj.getScore(ChatColor.AQUA.toString()).setScore(3);
+
+        // empty line
+        Score line13 = obj.getScore("       ");
+        line13.setScore(2);
+
+        Score address = obj.getScore(ChatColor.GRAY + "play.bashybashy.com");
+        address.setScore(1);
+
+        player.setScoreboard(scoreboard);
+    }
+
+    private void setScoreboardGameStart() {
+        for (UUID uuid :players) {
+            Player player = Bukkit.getPlayer(uuid);
+            player.getScoreboard().getTeam("sbTime").setPrefix(ChatColor.GREEN + "Game time: ");
+
+            player.getScoreboard().getTeam("sbEmpty1").setPrefix("       ");
+            player.getScoreboard().getTeam("sbEmpty1").setSuffix("       ");
+            player.getScoreboard().getTeam("sbTeamInfo").setPrefix(ChatColor.GOLD + "Teams ");
+            player.getScoreboard().getTeam("sbTeamInfo").setSuffix("remaining");
+            player.getScoreboard().getTeam("sbEmpty2").setPrefix("      ");
+            player.getScoreboard().getTeam("sbEmpty2").setSuffix("      ");
+            player.getScoreboard().getTeam("sbBedStatus").setPrefix(ChatColor.GREEN + "Bed: ");
+            player.getScoreboard().getTeam("sbBedStatus").setSuffix(ChatColor.GREEN + "Alive");
+            player.getScoreboard().getTeam("sbKills").setPrefix(ChatColor.GREEN + "Kills: ");
+            player.getScoreboard().getTeam("sbKills").setSuffix(ChatColor.BLUE + "0");
+        }
+    }
+
+    public GameInfo getGameInfo() {return gameInfo;}
 
 
 }

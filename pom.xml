@@ -69,6 +69,10 @@
             <id>simonsators-repo</id>
             <url>https://simonsator.de/repo/</url>
         </repository>
+        <repository>
+            <id>local-repo</id>
+            <url>C:/Users/abern/.m2/repository</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -94,6 +98,12 @@
             <groupId>de.simonsator</groupId>
             <artifactId>spigot-party-api-for-party-and-friends</artifactId>
             <version>1.0.4-RELEASE</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.stewart</groupId>
+            <artifactId>bb_api</artifactId>
+            <version>1.72</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

@@ -13,6 +13,7 @@ import com.stewart.bedwars.manager.ConfigManager;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.stewart.bb_api.Bb_api;
 
 import java.util.function.Consumer;
 
@@ -22,6 +23,8 @@ public final class Bedwars extends JavaPlugin {
     private SockExchangeApi sockExchangeApi;
     private ReceivedMessageNotifier messageNotifier;
 
+    private Bb_api bb_api = (Bb_api) Bukkit.getServer().getPluginManager().getPlugin("bb_api");
+
     @Override
     public void onEnable() {
         // setup config file
@@ -29,6 +32,13 @@ public final class Bedwars extends JavaPlugin {
         // get the arena manager, for bedwars it will only contain one arena.  Read the comments in the arenaManger class
         // for more information on why I did it like this
         arenaManager = new ArenaManager(this);
+
+        if (bb_api == null) {
+            System.out.println("---------------------------------------------API IS NULL------------------------");
+        } else {
+            System.out.println("---------------------------------------------toggle messagesending------------------------");
+            bb_api.getMessageManager().toggleMessageSending(true);
+        }
 
         // need this to be able to move players between servers using bungeecord
         this.getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
@@ -102,6 +112,9 @@ public final class Bedwars extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        bb_api.getMessageManager().toggleMessageSending(false);
     }
+
+    public Bb_api getBb_api() {return bb_api;}
+
 }

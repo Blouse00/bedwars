@@ -3,7 +3,11 @@ package com.stewart.bedwars.manager;
 import com.stewart.bedwars.Bedwars;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 // the config manager is an instance of the main class
@@ -20,7 +24,7 @@ public class ConfigManager {
 
     /* public functions can be called from other classes */
     public  static int getRequiredPlayers(int teamSize) {
-        System.out.println("get required players called teamsize = " + teamSize);
+       // System.out.println("get required players called teamsize = " + teamSize);
         if (teamSize == 1) {
          //   System.out.println("1 get required players called teamsize = " + config.getInt("required-players-1"));
             return config.getInt("required-players-1");
@@ -46,6 +50,22 @@ public class ConfigManager {
                 config.getDouble("lobby-spawn.z"),
                 (float) config.getDouble("lobby-spawn.yaw"),
                 (float) config.getDouble("lobby-spawn.pitch"));
+    }
+
+    public  static List<Location> getLeaderboardSpawns(World world) {
+
+        List<Location> locations = new ArrayList<>();
+
+        for (String str : config.getConfigurationSection("leaderboard-locations").getKeys(false)) {
+            double x = config.getDouble("leaderboard-locations." + str + ".x");
+            double y = config.getDouble("leaderboard-locations." + str + ".y");
+            double z = config.getDouble("leaderboard-locations." + str + ".z");
+
+            locations.add(new Location(world, x, y, z));
+
+        }
+
+        return locations;
     }
 
 

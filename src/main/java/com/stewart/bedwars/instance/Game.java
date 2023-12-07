@@ -26,8 +26,8 @@ public class Game {
 
     private Bedwars main;
     private Arena arena;
-    private Integer bedBreakSeconds = 2400;  // 2400 = 40 min
-    private Integer gameEndSeconds = 3000;   // 3000 = 50 min
+    private Integer bedBreakSeconds = 2400;  // 2280 = 38 min
+    private Integer gameEndSeconds = 2700;   // 3000 = 45 min
     // keeps a list of all people currently spawn protected and the game time it started
     private HashMap<UUID, Integer> playerSpawnProtect = new HashMap<>();
     // game time passed in seconds
@@ -65,10 +65,11 @@ public class Game {
 
           arena.addWoodenSword(Bukkit.getPlayer(uuid));
         //    player.getInventory().addItem(new ItemStack(Material.EMERALD, 64));
+         //   player.getInventory().addItem(new ItemStack(Material.DIAMOND, 64));
          //  player.getInventory().addItem(new ItemStack(Material.FIREBALL, 64));
           //  player.getInventory().addItem(new ItemStack(Material.TNT, 64));
          //   player.getInventory().addItem(new ItemStack(Material.WOOL, 64));
-        //    player.getInventory().addItem(new ItemStack(Material.IRON_INGOT, 64));
+         //   player.getInventory().addItem(new ItemStack(Material.IRON_INGOT, 64));
          //   player.getInventory().addItem(new ItemStack(Material.GOLD_INGOT, 64));
            // ItemStack eggs = new ItemStack(Material.EGG, 20);
          //   ItemMeta eggsMeta  = eggs.getItemMeta();
@@ -121,6 +122,7 @@ public class Game {
             // how the damage was taken (void, fire, projectile etc) so in the future we could show a better message here.
             arena.sendMessage(diedColour + died.getName() + " died!");
         } else {
+
             // each players number of kills is stored in their team instance so to log the kill
             Team killerTeam = arena.getTeam(killer.getUniqueId());
             ChatColor killerColour = ChatColor.RED;
@@ -154,8 +156,12 @@ public class Game {
             died.teleport(arena.getSpectatorSpawn());
         } else {
             // game state live
+            // log death and kill in the api
+            main.getBb_api().getPlayerManager().increaseValueByOne(died.getUniqueId(), "bw_deaths");
+            if (killer != null) {
+                main.getBb_api().getPlayerManager().increaseValueByOne(killer.getUniqueId(), "bw_kills");
+            }
             // check if died player has team bed, first get the players team instance
-
             GameUtils.dropInventory(died);
             arena.addHotbarNetherStar(died);
             if (diedTeam == null) {
@@ -209,7 +215,7 @@ public class Game {
         // this sets the game time (mm:ss) from the game senconds.
         this.gameTime =  String.format("%02d:%02d",  (gameSeconds % 3600) / 60, gameSeconds % 60);
 
-        if (playerSpawnProtect.size() > 0) {
+        if (!playerSpawnProtect.isEmpty()) {
             // remove any players from spawn protect list that may have left the game
             playerSpawnProtect.entrySet().removeIf(e->  Bukkit.getPlayer(e.getKey()) == null );
             // show particles around spawn protected players
@@ -218,8 +224,43 @@ public class Game {
             showPlayerParticles();
         }
 
-        // BEDS DESTROYED
+        // NEW PLAYER MESSAGES
+        if(gameSeconds == 5) {
+            // sent new player first message
+            arena.sendMessageNewPlayers(arena.getGameInfo().getNewPlayerMessage());
+            arena.sendMessagePityPlayers(arena.getGameInfo().getPityMessage());
+        }
+        if(gameSeconds == 10) {
+            // sent new player first message
+            arena.sendMessageNewPlayers("Protect your bed!  Your bed lets you respawn.  Destroy other beds!");
+        }
+        if(gameSeconds == 15) {
+            // sent new player first message
+            arena.sendMessageNewPlayers("3 iron buys wool, use wool to bridge to other islands.");
+        }
+        if(gameSeconds == 20) {
+            // sent new player first message
+            arena.sendMessageNewPlayers("Right-click on the shopkeeper to buy weapons, materials and tools.");
+        }
+        if(gameSeconds == 25) {
+            // sent new player first message
+            arena.sendMessageNewPlayers("Diamonds and ems can be used for upgrades! Find ems on the middle island.");
+        }
+        if(gameSeconds == 120) {
+            // sent new player first message
+            arena.sendMessageNewPlayers("Get your weapons enchanted by the Enchantress at the middle island!");
+        }
+        if(gameSeconds == 125) {
+            // sent new player first message
+            arena.sendMessageNewPlayers("Buy special items from the Armourer at the middle island!");
+        }
 
+        // LOG GAME played after 1 minute
+        if (gameSeconds == 60) {
+            arena.logGamePlayed();
+        }
+
+        // BEDS DESTROYED
         if (gameSeconds == (bedBreakSeconds - 120)) {  // 2 mins before bed break
             // countdown 2 mins till all beds broken
             arena.sendTitleSubtitle("2 minutes","until all beds broken!", null, "4");

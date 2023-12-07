@@ -142,25 +142,28 @@ public class ShopEntities {
 
         // SHORTCUTS
         // 37 STONE SWORD
-        addStoneSwordToInventory(inv, 37);
+        addStoneSwordToInventory(inv, 28);
 
         // 38 IRON SWORD
-        addIronSwordToInventory(inv, 38);
+        addIronSwordToInventory(inv, 37);
 
         // 39 WOOL BLOCKS
-        addWoolToInventory(inv, 39, teamColourInt);
+        addWoolToInventory(inv, 38, teamColourInt);
 
         // 40 STONE PICK
-        addStonePickToInventory(inv, 40);
+        addStonePickToInventory(inv, 39);
 
         // 41 BOW
-        addBowToInventory(inv, 41);
+        addBowToInventory(inv, 40);
 
         // 42 ARROWS
-        addArrowsToInventory(inv, 42);
+        addArrowsToInventory(inv, 41);
 
         // 43 GAPPLE - 3 GOLD
-        addGappleToInventory(inv, 43, "armoury.island-gapple");
+        addGappleToInventory(inv, 42, "armoury.island-gapple");
+
+        addMilkBucketToInventory(inv, 43);
+        addPearlToInventory(inv, 34);
 
         //FRAME
         ItemStack frame = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
@@ -401,7 +404,15 @@ public class ShopEntities {
         potion.setItemMeta(potionMeta);
         inv.setItem(31, potion);
 
-        //HOUND
+        //SPONGE
+        ItemStack sponge = new ItemStack(Material.SPONGE);
+        ItemMeta spongeMeta = sponge.getItemMeta();
+        cost = getPrice("armoury.sponge", true);
+        spongeMeta.setDisplayName(ChatColor.GOLD + "Sponge - cost " + cost);
+        spongeMeta.setLore(Arrays.asList(
+                ChatColor.GRAY + "Use it to soak up water."));
+        sponge.setItemMeta(spongeMeta);
+        inv.setItem(32, sponge);
 
         //FRAME
         ItemStack frame = new ItemStack(Material.STAINED_GLASS_PANE, 1, DyeColor.BLACK.getData());
@@ -485,6 +496,28 @@ public class ShopEntities {
                 ChatColor.GRAY + "Eat when you want to recover health."));
         gapple.setItemMeta(gappleMeta);
         inventory.setItem(slot, gapple);
+    }
+
+    private static void addMilkBucketToInventory(Inventory inventory, int slot) {
+        ItemStack milkBucket = new ItemStack(Material.MILK_BUCKET);
+        ItemMeta milkBucketMetaMeta = milkBucket.getItemMeta();
+        String cost = getPrice("misc.milk", true);
+        milkBucketMetaMeta.setDisplayName(ChatColor.GOLD + "Milk Bucket - cost " + cost);
+        milkBucketMetaMeta.setLore(Arrays.asList(
+                ChatColor.GRAY + "Drink to remove potion effects."));
+        milkBucket.setItemMeta(milkBucketMetaMeta);
+        inventory.setItem(slot, milkBucket);
+    }
+
+    private static void addPearlToInventory(Inventory inventory, int slot) {
+        ItemStack pearl = new ItemStack(Material.ENDER_PEARL);
+        ItemMeta pearlMeta = pearl.getItemMeta();
+        String cost = getPrice("misc.pearl", true);
+        pearlMeta.setDisplayName(ChatColor.GOLD + "Ender Pearl - cost " + cost);
+        pearlMeta.setLore(Arrays.asList(
+                ChatColor.GRAY + "Throw and teleport where it lands."));
+        pearl.setItemMeta(pearlMeta);
+        inventory.setItem(slot, pearl);
     }
 
     private static void addBarrierToInventory(Inventory inventory, int slot) {
@@ -665,9 +698,18 @@ public class ShopEntities {
         addWoolToInventory(blockshop, 20, teamColorInt);
 
         //GLASS
+        ItemStack ladder = new ItemStack(Material.LADDER, 1, (short) teamColorInt);
+        ItemMeta ladderMeta = ladder.getItemMeta();
+        String cost = getPrice("blocks.ladder", true);
+        ladderMeta.setDisplayName(ChatColor.GOLD + "Ladder - cost " + cost);
+        ladderMeta.setLore(Arrays.asList(ChatColor.GRAY + pricesConfig.getString("blocks.ladder.amount") + " items."));
+        ladder.setItemMeta(ladderMeta);
+        blockshop.setItem(13, ladder);
+
+        //GLASS
         ItemStack glass = new ItemStack(Material.STAINED_GLASS, 1, (short) teamColorInt);
         ItemMeta glassMeta = glass.getItemMeta();
-        String cost = getPrice("blocks.glass", true);
+        cost = getPrice("blocks.glass", true);
         glassMeta.setDisplayName(ChatColor.GOLD + "Stained glass - cost " + cost);
         glassMeta.setLore(Arrays.asList(ChatColor.GRAY + pricesConfig.getString("blocks.glass.amount") + " blocks."));
         glass.setItemMeta(glassMeta);
@@ -813,7 +855,12 @@ public class ShopEntities {
             ItemMeta itemMeta = itemStack.getItemMeta();
             itemMeta.spigot().setUnbreakable(true);
             itemStack.setItemMeta(itemMeta);
-            player.getInventory().addItem(itemStack);
+            // TODO loop through the items in the hotbar (slots 0-8) if one is a wooden sword, get the slot it is in,
+            //  move it to the inventory - loop backwards through all slots till an empty one is found and move the
+            //  wooden one there before adding the new one to the original hotbar slot. If no empty slots drop or remove
+            //  the original sword
+            Integer origSlot = getHotBarSlotWithSword(player, false, false);
+            swapItemSlots(player, origSlot, itemStack);
             player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "stone sword" + ChatColor.GREEN + " for " + getPrice("weapons.stone-sword", true));
         } else {
             player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.stone-sword", false) + " to buy this item.");
@@ -828,11 +875,72 @@ public class ShopEntities {
             ItemMeta itemMeta = itemStack.getItemMeta();
             itemMeta.spigot().setUnbreakable(true);
             itemStack.setItemMeta(itemMeta);
-            player.getInventory().addItem(itemStack);
+            Integer origSlot = getHotBarSlotWithSword(player, true, false);
+            swapItemSlots(player, origSlot, itemStack);
+            // TODO loop through the items in the hotbar (slots 0-8) if one is a wooden or stone sword, get the slot it is in,
+            //  move it to the inventory - loop backwards through all slots till an empty one is found and move the
+            //  wooden one there before adding the new one to the original hotbar slot. If no empty slots drop or remove
+            //  the original sword
             player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought an " + ChatColor.BLUE + "iron sword" + ChatColor.GREEN + " for " + getPrice("weapons.iron-sword", true));
         } else {
             player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.iron-sword", false) +" to buy this item.");
         }
+    }
+
+    public Integer getHotBarSlotWithSword(Player player, boolean stoneAndWooden, boolean forDiamond) {
+        Inventory inventory = player.getInventory();
+        for (int i= 0 ; i < 9 ; i++ ) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack != null) {
+                if (stack.getType() == Material.WOOD_SWORD) {
+                    return i;
+                }
+                if (stoneAndWooden && stack.getType() == Material.STONE_SWORD) {
+                    return i;
+                }
+                if (forDiamond && stack.getType() == Material.IRON_SWORD) {
+                    return i;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void swapItemSlots(Player player, Integer targetSlot, ItemStack newItem) {
+        if (targetSlot == null) {
+            // no current sword in hotbar
+            player.getInventory().addItem(newItem);
+            System.out.println("Swap item no old sword found");
+        } else {
+            // get empty inventory slot, checking non hotbar first
+            Integer emptySlot = getEmptyInventorySlot(player);
+            System.out.println("Sword slot is " + targetSlot);
+            if (emptySlot == null) {
+                // no empty slots
+                // drop the old sword
+                ItemStack stack = player.getInventory().getItem(targetSlot);
+                player.getWorld().dropItemNaturally(player.getLocation(), stack.clone());
+                System.out.println("Swap item no empty slots item should be dropped");
+            } else {
+                // move item from old slot to new slot, put new sword in old slot
+                System.out.println("Empty slot is " + emptySlot);
+                ItemStack stack = player.getInventory().getItem(targetSlot);
+                player.getInventory().setItem(emptySlot, stack);
+            }
+            // put the new item in the original item slot
+            player.getInventory().setItem(targetSlot, newItem);
+        }
+    }
+
+    public Integer getEmptyInventorySlot(Player player) {
+        Inventory inventory = player.getInventory();
+        for (int i = 35 ; i >-1 ; i--) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack == null) {
+                return i;
+            }
+        }
+        return null;
     }
 
     public void BuyBow(Player player) {
@@ -888,6 +996,28 @@ public class ShopEntities {
         }
     }
 
+    public void BuyMilk(Player player) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+
+        if (playerItemInventory.hasAmount(pricesConfig, "misc.milk", true)) {
+            player.getInventory().addItem(new ItemStack(Material.MILK_BUCKET, 1));
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "milk bucket" + ChatColor.GREEN + " for " + getPrice("misc.milk", true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("misc.milk", false) + " to buy this item.");
+        }
+    }
+
+    public void BuyPearl(Player player) {
+        PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
+
+        if (playerItemInventory.hasAmount(pricesConfig, "misc.pearl", true)) {
+            player.getInventory().addItem(new ItemStack(Material.ENDER_PEARL, 1));
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "ender pearl" + ChatColor.GREEN + " for " + getPrice("misc.pearl", true));
+        } else {
+            player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("misc.pearl", false) + " to buy this item.");
+        }
+    }
+
     public void BuyWoolBlock(Player player, int teamColorInt) {
         PlayerItemInventory playerItemInventory = new PlayerItemInventory(player);
         String configItem = "blocks.wool";
@@ -934,7 +1064,9 @@ public class ShopEntities {
                     ItemMeta itemMeta = itemStack.getItemMeta();
                     itemMeta.spigot().setUnbreakable(true);
                     itemStack.setItemMeta(itemMeta);
-                    player.getInventory().addItem(itemStack);
+                    Integer origSlot = getHotBarSlotWithSword(player, true, true);
+                    swapItemSlots(player, origSlot, itemStack);
+                  //  player.getInventory().addItem(itemStack);
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "diamond sword" + ChatColor.GREEN + " for " + getPrice("weapons.diamond-sword", true));
                 } else {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice("weapons.diamond-sword", false) + " to buy this item.");
@@ -1158,6 +1290,19 @@ public class ShopEntities {
             case 0:
                 // Back to main shop
                 BackToVillagerShop(player);
+                break;
+            case 13:
+                // Buy ladder
+                configItem = "blocks.ladder";
+                if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
+                    // playerItemInventory.removeIron(5);
+                    int amount = pricesConfig.getInt(configItem + ".amount");
+                    player.getInventory().addItem(new ItemStack(Material.LADDER, amount, (short) teamColorInt));
+                    //
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought " + amount  + ChatColor.BLUE + " ladders " + ChatColor.GREEN + " for " + getPrice(configItem, true));
+                } else {
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
+                }
                 break;
             case 20:
                 // Buy wool
@@ -1462,7 +1607,8 @@ public class ShopEntities {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this enchantment.");
                     return;
                 }
-                if (inHand.getType() == Material.DIAMOND_SWORD || inHand.getType() == Material.IRON_SWORD || inHand.getType() == Material.STONE_SWORD) {
+                if (inHand.getType() == Material.DIAMOND_SWORD || inHand.getType() == Material.IRON_SWORD ||
+                        inHand.getType() == Material.WOOD_SWORD ||inHand.getType() == Material.STONE_SWORD) {
                     if (inHand.containsEnchantment(Enchantment.DAMAGE_ALL)) {
                         player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "Your sword already has this enchantment!");
                         return;
@@ -1482,7 +1628,8 @@ public class ShopEntities {
                     return;
                 }
                 inHand = player.getInventory().getItemInHand();
-                if (inHand.getType() == Material.DIAMOND_SWORD || inHand.getType() == Material.IRON_SWORD || inHand.getType() == Material.STONE_SWORD) {
+                if (inHand.getType() == Material.DIAMOND_SWORD || inHand.getType() == Material.IRON_SWORD
+                        || inHand.getType() == Material.WOOD_SWORD|| inHand.getType() == Material.STONE_SWORD) {
                     if (inHand.containsEnchantment(Enchantment.KNOCKBACK)) {
                         player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "Your sword already has this enchantment!");
                         return;
@@ -1498,13 +1645,13 @@ public class ShopEntities {
             case 22:
                 // Flame sword or bow
                 configItem = "enchantress.fire-5-sword";
-                if (playerItemInventory.hasAmount(pricesConfig, configItem, false) == false) {
+                if (!playerItemInventory.hasAmount(pricesConfig, configItem, false)) {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this enchantment.");
                     return;
                 }
                 inHand = player.getInventory().getItemInHand();
-             //   if (inHand.getType() == Material.DIAMOND_SWORD || inHand.getType() == Material.IRON_SWORD || inHand.getType() == Material.STONE_SWORD || inHand.getType() == Material.BOW) {
-                if (inHand.getType() == Material.DIAMOND_SWORD || inHand.getType() == Material.IRON_SWORD || inHand.getType() == Material.STONE_SWORD) {
+                if (inHand.getType() == Material.DIAMOND_SWORD || inHand.getType() == Material.IRON_SWORD ||
+                        inHand.getType() == Material.WOOD_SWORD || inHand.getType() == Material.STONE_SWORD) {
                     if (inHand.containsEnchantment(Enchantment.FIRE_ASPECT)) {
                         player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "Your sword already has this enchantment!");
                         return;
@@ -1531,7 +1678,7 @@ public class ShopEntities {
             case 23:
                 // Power Punch bow
                 configItem = "enchantress.power-punch-4-bow";
-                if (playerItemInventory.hasAmount(pricesConfig, configItem, false) == false) {
+                if (!playerItemInventory.hasAmount(pricesConfig, configItem, false)) {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this enchantment.");
                     return;
                 }
@@ -1697,6 +1844,17 @@ public class ShopEntities {
                     player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
                 }
                 break;
+            case 32:
+                // Buy speed potion
+                configItem = "armoury.sponge";
+                if (playerItemInventory.hasAmount(pricesConfig, configItem, true)) {
+                    player.getInventory().addItem(new ItemStack(Material.SPONGE, 1));
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.GREEN + "You bought a " + ChatColor.BLUE + "sponge" + ChatColor.GREEN + " for " + getPrice(configItem, true));
+                } else {
+                    player.sendMessage(ChatUtils.arenaChatPrefix + ChatColor.RED + "You need at least " + getPrice(configItem, false) + " to buy this item.");
+                }
+                break;
+
 
             default:
                 return;

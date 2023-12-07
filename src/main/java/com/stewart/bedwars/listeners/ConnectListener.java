@@ -58,7 +58,6 @@ public class ConnectListener implements Listener {
             // at the moment there is only one arena world, if we add more we will need to
             // have a way to direct players to the correct one.
             main.getArenaManager().getFirstArena().addPlayer(player);
-            System.out.println("Update lobby on player join");
         }
 
         // update the hub world to pass the new player cont on this server

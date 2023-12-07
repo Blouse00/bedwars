@@ -1,5 +1,6 @@
 name: Bedwars
 version: '${project.version}'
 main: com.stewart.bedwars.Bedwars
+depend: [bb_api]
 commands:
   pw:
